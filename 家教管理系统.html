@@ -298,7 +298,7 @@ a{text-decoration:none;color:inherit}
 
 <div class="page active" id="page-login">
 <div class="login-page">
-<div class="login-header"><div class="logo-text">家教管理助手</div><div class="sub-text">让每一堂课都有序进行</div></div>
+<div class="login-header"><div class="logo-text">家教管理助手 v1.1</div><div class="sub-text">让每一堂课都有序进行</div></div>
 <div class="role-selector">
 <div class="role-tab active" id="roleTeacherTab" onclick="selectRole('teacher')"><div class="role-icon">&#128105;&#8205;&#127979;</div><div class="role-label">教师端</div></div>
 <div class="role-tab" id="roleParentTab" onclick="selectRole('parent')"><div class="role-icon">&#128104;&#8205;&#128105;&#8205;&#128103;</div><div class="role-label">家长端</div></div>
@@ -887,9 +887,10 @@ function confirmAction() {
 let loginRole = 'teacher';
 
 function selectRole(role) {
+  if (typeof console !== 'undefined') console.log('[selectRole] role=' + role);
   loginRole = role;
-  var rtt = $('roleTeacherTab'); if (rtt) rtt.className = role === 'teacher' ? 'role-tab active' : 'role-tab';
-  var rpt = $('roleParentTab'); if (rpt) rpt.className = role === 'parent' ? 'role-tab active' : 'role-tab';
+  var rtt = $('roleTeacherTab'); if (rtt) { rtt.classList.remove('active'); if (role==='teacher') rtt.classList.add('active'); }
+  var rpt = $('roleParentTab'); if (rpt) { rpt.classList.remove('active'); if (role==='parent') rpt.classList.add('active'); }
   var rl = $('regLink'); if (rl) rl.style.display = role === 'parent' ? 'block' : 'none';
   var rf = $('registerForm'); if (rf) rf.style.display = 'none';
   var lf = $('loginForm'); if (lf) lf.style.display = 'block';
@@ -1938,16 +1939,22 @@ function init() {
     selectRole('teacher');
   } catch(e) {
     console.error('Init error:', e);
-    alert('系统初始化失败，请刷新页面重试。错误: ' + e.message);
+    if (typeof alert !== 'undefined') alert('系统初始化失败，请刷新页面重试。错误: ' + e.message);
   }
 }
 
-// Auto-login check (optional, disabled by default)
-// init() will show login page
+// 兜底：为 role tab 绑定直接事件监听，防止 inline onclick 静默失效
+function bindRoleTabFallback() {
+  try {
+    var tTab = $('roleTeacherTab'); if (tTab) { tTab.onclick = function(){ selectRole('teacher'); }; }
+    var pTab = $('roleParentTab'); if (pTab) { pTab.onclick = function(){ selectRole('parent'); }; }
+    if (typeof console !== 'undefined') console.log('[init] role tab fallback bound');
+  } catch(e) { if (typeof console !== 'undefined') console.error('bindRoleTabFallback error:', e); }
+}
 
 // Run on load
 window.addEventListener('DOMContentLoaded', function() {
-  try { init(); } catch(e) { console.error('DOMContentLoaded error:', e); }
+  try { init(); bindRoleTabFallback(); } catch(e) { console.error('DOMContentLoaded error:', e); }
 });
 </script>
 </body>
