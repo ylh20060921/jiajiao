@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手</title>
+<title>家教管理助手 v1.1</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -659,6 +659,13 @@ a{text-decoration:none;color:inherit}
 </div>
 
 <script>
+// ==================== Global Error Handler ====================
+window.onerror = function(msg, src, lineno, colno, error) {
+  var info = '系统错误：' + msg + '\n位置：' + lineno + ':' + colno;
+  if (typeof console !== 'undefined' && console.warn) console.warn('onerror:', msg, src, lineno, colno, error);
+  if (typeof alert !== 'undefined') alert(info);
+  return true;
+};
 // ==================== Global State ====================
 const STORAGE_KEY = 'tutor_system_data';
 let G = loadData();
@@ -881,11 +888,11 @@ let loginRole = 'teacher';
 
 function selectRole(role) {
   loginRole = role;
-  $('roleTeacherTab').className = role === 'teacher' ? 'role-tab active' : 'role-tab';
-  $('roleParentTab').className = role === 'parent' ? 'role-tab active' : 'role-tab';
-  $('regLink').style.display = role === 'parent' ? 'block' : 'none';
-  $('registerForm').style.display = 'none';
-  $('loginForm').style.display = 'block';
+  var rtt = $('roleTeacherTab'); if (rtt) rtt.className = role === 'teacher' ? 'role-tab active' : 'role-tab';
+  var rpt = $('roleParentTab'); if (rpt) rpt.className = role === 'parent' ? 'role-tab active' : 'role-tab';
+  var rl = $('regLink'); if (rl) rl.style.display = role === 'parent' ? 'block' : 'none';
+  var rf = $('registerForm'); if (rf) rf.style.display = 'none';
+  var lf = $('loginForm'); if (lf) lf.style.display = 'block';
 }
 
 function toggleRegister() {
@@ -901,8 +908,10 @@ function toggleRegister() {
 }
 
 function handleLogin() {
-  let username = $('loginUsername').value.trim();
-  let pwd = $('loginPassword').value.trim();
+  var uEl = $('loginUsername'); var pEl = $('loginPassword');
+  if (!uEl || !pEl) { showToast('页面元素缺失，请刷新'); return; }
+  let username = uEl.value.trim();
+  let pwd = pEl.value.trim();
   if (!username || !pwd) { showToast('请输入账号和密码'); return; }
   if (loginRole === 'teacher') {
     let t = (G.teachers || []).find(function(t) { return t.phone === username && t.password === pwd && t.status === 'approved'; });
