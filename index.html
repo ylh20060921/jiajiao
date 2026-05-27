@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>家教管理助手 v2.0</title>
+<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -235,6 +237,33 @@ a{text-decoration:none;color:inherit}
 .order-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid #F5F5F5}
 .order-info{flex:1}
 .order-student{font-weight:500}
+.sync-card{background:#fff;border-radius:12px;padding:20px;margin-bottom:12px;box-shadow:0 1px 6px rgba(0,0,0,0.06)}
+.sync-status{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;margin-bottom:12px;font-size:13px}
+.sync-status.synced{background:#E8F5E9;color:#4CAF50}
+.sync-status.syncing{background:#FFF3E0;color:#FF9800}
+.sync-status.failed{background:#FFEBEE;color:#F44336}
+.sync-status.none{background:#F5F6FA;color:#999}
+.sync-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.sync-dot.green{background:#4CAF50}
+.sync-dot.orange{background:#FF9800;animation:pulse 1.2s infinite}
+.sync-dot.red{background:#F44336}
+.sync-dot.gray{background:#CCC}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.sync-section{margin-top:20px;border-top:1px solid #F0F0F0;padding-top:15px}
+.sync-section-title{font-size:14px;font-weight:600;color:#333;margin-bottom:10px}
+.sync-info-row{display:flex;justify-content:space-between;padding:6px 0;font-size:13px}
+.sync-info-label{color:#999}
+.sync-info-value{color:#333}
+.sync-btn{width:100%;padding:11px;border-radius:10px;font-size:14px;font-weight:500;text-align:center;cursor:pointer;margin-top:8px}
+.sync-btn-primary{background:linear-gradient(135deg,#4A90D9,#357ABD);color:#fff;border:none}
+.sync-btn-secondary{background:#fff;color:#4A90D9;border:1px solid #4A90D9}
+.sync-btn-danger{background:#fff;color:#FF5252;border:1px solid #FF5252}
+.sync-btn:disabled{opacity:0.5;cursor:not-allowed}
+.sync-help{background:#F8FAFE;border-radius:10px;padding:14px;margin-top:12px;font-size:12px;color:#666;line-height:1.8}
+.sync-help a{color:#4A90D9;text-decoration:underline}
+.sync-conflict-modal{max-width:450px}
+.conflict-list{max-height:200px;overflow-y:auto;margin:12px 0}
+.conflict-item{padding:8px 0;border-bottom:1px solid #F0F0F0;font-size:13px}
 </style>
 </head>
 <body>
@@ -304,6 +333,69 @@ a{text-decoration:none;color:inherit}
       <span>演示账号：teacher / 123456（教师端）</span>
       <span>演示账号：parent / 123456（家长端）</span>
       <span class="admin-link" data-action="goAdminLogin">管理员入口</span>
+      <span class="admin-link" data-action="navPage" data-target="page-sync-config" style="margin-left:10px">云同步配置</span>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 云同步配置页 ==================== -->
+<div class="page" id="page-sync-config">
+  <div class="container">
+    <div class="page-header">
+      <div>
+        <div class="page-title">云同步配置</div>
+        <div class="page-sub">使用 GitHub Gist 实现多设备数据同步</div>
+      </div>
+      <div class="back-btn" data-action="navPage" data-target="page-login">返回登录</div>
+    </div>
+
+    <div id="syncStatusCard" class="sync-card">
+      <div class="sync-section-title">同步状态</div>
+      <div id="syncStatusArea"></div>
+    </div>
+
+    <div class="sync-card">
+      <div class="sync-section-title">GitHub Token 配置</div>
+      <div class="form-group">
+        <div class="form-label">Personal Access Token</div>
+        <div class="password-row">
+          <input class="password-input" type="password" id="syncTokenInput" placeholder="请输入 GitHub PAT（gist 权限）" />
+          <button class="toggle-password-btn" data-action="toggleSyncTokenVisibility" type="button">&#x1F441;</button>
+        </div>
+        <div class="form-hint">Token 仅保存在本设备，不会上传到任何服务器</div>
+      </div>
+      <div class="form-group">
+        <div class="form-label">Gist ID（选填，留空自动创建）</div>
+        <input class="form-input" id="syncGistIdInput" placeholder="已有同步 Gist 时填写，多设备共用同一 Gist ID" />
+        <div class="form-hint">首次配置留空即可，系统会自动创建 Gist；其他设备填写相同的 Gist ID 即可同步</div>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px">
+        <button class="sync-btn sync-btn-primary" id="syncSaveTokenBtn" data-action="saveSyncToken">保存配置</button>
+        <button class="sync-btn sync-btn-danger" id="syncClearTokenBtn" data-action="clearSyncToken">清除配置</button>
+      </div>
+    </div>
+
+    <div class="sync-card">
+      <div class="sync-section-title">同步操作</div>
+      <div style="display:flex;gap:10px;margin-bottom:10px">
+        <button class="sync-btn sync-btn-primary" id="syncUploadBtn" data-action="syncUpload">&#x1F4A5; 上传到云端</button>
+        <button class="sync-btn sync-btn-secondary" id="syncDownloadBtn" data-action="syncDownload">&#x2B07; 从云端下载</button>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button class="sync-btn sync-btn-secondary" id="syncTestBtn" data-action="testSyncConnection">测试连接</button>
+        <button class="sync-btn sync-btn-secondary" id="syncAutoToggleBtn" data-action="toggleAutoSync">开启自动同步</button>
+      </div>
+      <div id="syncAutoStatus" style="font-size:12px;color:#999;margin-top:8px;text-align:center"></div>
+    </div>
+
+    <div class="sync-help">
+      <div style="font-weight:600;margin-bottom:6px">使用说明：</div>
+      <div>1. 登录 GitHub → Settings → Developer settings → Personal access tokens → Generate new token</div>
+      <div>2. 勾选 <b>gist</b> 权限，生成 Token</div>
+      <div>3. 将 Token 粘贴到上方输入框，点击"保存配置"</div>
+      <div>4. 点击"上传到云端"完成首次同步</div>
+      <div>5. 其他设备使用相同 Token 和 Gist ID 即可同步数据</div>
+      <div style="margin-top:8px;color:#4A90D9">Token 获取地址：<a href="javascript:void(0)" data-action="openGitHubTokenPage">github.com/settings/tokens</a></div>
     </div>
   </div>
 </div>
@@ -1056,6 +1148,8 @@ function getDefaultData() {
 
 function saveData(data) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  // 自动同步（静默上传）
+  setTimeout(function() { doAutoSync(); }, 500);
 }
 
 function genId() {
@@ -1097,6 +1191,7 @@ function showPage(pageId) {
   if (pageId === 'page-parent-index' && currentUser && currentUser.id) renderParentIndex(data);
   if (pageId === 'page-parent-course' && currentUser && currentUser.id) renderParentCourses(data);
   if (pageId === 'page-parent-info' && currentUser && currentUser.id) renderParentInfo(data);
+  if (pageId === 'page-sync-config') renderSyncConfigPage();
   window.scrollTo(0, 0);
 }
 
@@ -2682,6 +2777,409 @@ function changePwdSubmit() {
   goBack();
 }
 
+/* ========== 云同步模块（GitHub Gist） ========== */
+var SYNC_CONFIG_KEY = 'jiajiao_sync_config';
+var SYNC_DATA_KEY = 'jiajiao_sync_data';
+var SYNC_LAST_TIME_KEY = 'jiajiao_sync_last_time';
+var SYNC_AUTO_KEY = 'jiajiao_sync_auto';
+var GITHUB_API = 'https://api.github.com';
+
+// 读取同步配置
+function getSyncConfig() {
+  try {
+    var raw = localStorage.getItem(SYNC_CONFIG_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return { token: '', gistId: '', autoSync: false };
+}
+
+// 保存同步配置（token 只存本地）
+function saveSyncConfig(config) {
+  localStorage.setItem(SYNC_CONFIG_KEY, JSON.stringify(config));
+}
+
+// 从 token 派生加密密钥（取 SHA256 前 32 字符作为 AES 密钥）
+function getSyncKey(token) {
+  try {
+    var hash = CryptoJS.SHA256(token);
+    return hash.toString(CryptoJS.enc.Hex).substring(0, 32);
+  } catch (e) {
+    // fallback
+    var s = token || 'default';
+    while (s.length < 32) s += s;
+    return s.substring(0, 32);
+  }
+}
+
+// 加密数据
+function encryptSyncData(dataStr, token) {
+  var key = getSyncKey(token);
+  try {
+    var encrypted = CryptoJS.AES.encrypt(dataStr, key);
+    return encrypted.toString();
+  } catch (e) {
+    return null;
+  }
+}
+
+// 解密数据
+function decryptSyncData(cipherText, token) {
+  var key = getSyncKey(token);
+  try {
+    var bytes = CryptoJS.AES.decrypt(cipherText, key);
+    return bytes.toString(CryptoJS.enc.Utf8);
+  } catch (e) {
+    return null;
+  }
+}
+
+// 压缩（可选，用于大文件）
+function compressData(str) {
+  try {
+    var uint8 = pako.deflateRaw(new TextEncoder().encode(str));
+    return btoa(String.fromCharCode.apply(null, uint8));
+  } catch (e) {
+    return null;
+  }
+}
+
+function decompressData(base64Str) {
+  try {
+    var binary = atob(base64Str);
+    var uint8 = new Uint8Array(binary.length);
+    for (var i = 0; i < binary.length; i++) uint8[i] = binary.charCodeAt(i);
+    var inflated = pako.inflateRaw(uint8);
+    return new TextDecoder().decode(inflated);
+  } catch (e) {
+    return null;
+  }
+}
+
+// 更新同步状态显示
+function updateSyncStatus(state, message, detail) {
+  var area = document.getElementById('syncStatusArea');
+  if (!area) return;
+  var dotClass = 'gray', statusClass = 'none', text = '未配置';
+  if (state === 'synced') { dotClass = 'green'; statusClass = 'synced'; text = '已同步'; }
+  else if (state === 'syncing') { dotClass = 'orange'; statusClass = 'syncing'; text = '同步中...'; }
+  else if (state === 'failed') { dotClass = 'red'; statusClass = 'failed'; text = '同步失败'; }
+  var lastTime = localStorage.getItem(SYNC_LAST_TIME_KEY) || '';
+  var html = '<div class="sync-status ' + statusClass + '">'
+    + '<span class="sync-dot ' + dotClass + '"></span>'
+    + '<span>' + text + (message ? '：' + esc(message) : '') + '</span>'
+    + '</div>';
+  if (lastTime) {
+    html += '<div style="font-size:12px;color:#999;margin-top:4px">上次同步：' + lastTime + '</div>';
+  }
+  if (detail) {
+    html += '<div style="font-size:11px;color:#999;margin-top:4px;word-break:break-all">' + esc(detail) + '</div>';
+  }
+  area.innerHTML = html;
+}
+
+// 设置同步按钮状态
+function setSyncButtonsLoading(loading) {
+  var btns = ['syncUploadBtn', 'syncDownloadBtn', 'syncTestBtn', 'syncSaveTokenBtn', 'syncClearTokenBtn'];
+  for (var i = 0; i < btns.length; i++) {
+    var el = document.getElementById(btns[i]);
+    if (el) el.disabled = loading;
+  }
+}
+
+// 保存 Token 配置
+function saveSyncToken() {
+  var token = document.getElementById('syncTokenInput').value.trim();
+  var gistId = document.getElementById('syncGistIdInput').value.trim();
+  if (!token) { showToast('请输入 GitHub Token'); return; }
+  var config = { token: token, gistId: gistId, autoSync: getSyncConfig().autoSync || false };
+  saveSyncConfig(config);
+  showToastSuccess('配置已保存');
+  renderSyncConfigPage();
+}
+
+// 清除 Token 配置
+function clearSyncToken() {
+  showConfirm('确认清除', '确定要清除云同步配置？本地数据不受影响。', function() {
+    localStorage.removeItem(SYNC_CONFIG_KEY);
+    localStorage.removeItem(SYNC_LAST_TIME_KEY);
+    document.getElementById('syncTokenInput').value = '';
+    document.getElementById('syncGistIdInput').value = '';
+    showToastSuccess('配置已清除');
+    renderSyncConfigPage();
+    updateSyncStatus('none', '');
+  });
+}
+
+// 切换 Token 可见性
+function toggleSyncTokenVisibility() {
+  var input = document.getElementById('syncTokenInput');
+  if (input) input.type = input.type === 'password' ? 'text' : 'password';
+}
+
+// 测试 GitHub 连接
+function testSyncConnection() {
+  var config = getSyncConfig();
+  if (!config.token) { showToast('请先保存 Token'); return; }
+  setSyncButtonsLoading(true);
+  updateSyncStatus('syncing', '测试连接中');
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', GITHUB_API + '/user', true);
+  xhr.setRequestHeader('Authorization', 'token ' + config.token);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.onload = function() {
+    setSyncButtonsLoading(false);
+    if (xhr.status === 200) {
+      try {
+        var user = JSON.parse(xhr.responseText);
+        updateSyncStatus('synced', '连接成功', '用户：' + user.login);
+        showToastSuccess('GitHub 连接成功！用户：' + user.login);
+      } catch (e) {
+        updateSyncStatus('failed', '响应解析失败');
+      }
+    } else {
+      updateSyncStatus('failed', '连接失败（' + xhr.status + '）');
+      showToast('连接失败：' + xhr.status);
+    }
+  };
+  xhr.onerror = function() {
+    setSyncButtonsLoading(false);
+    updateSyncStatus('failed', '网络错误');
+    showToast('网络错误，请检查连接');
+  };
+  xhr.send();
+}
+
+// 上传数据到 Gist
+function syncUpload() {
+  var config = getSyncConfig();
+  if (!config.token) { showToast('请先保存 Token'); return; }
+  setSyncButtonsLoading(true);
+  updateSyncStatus('syncing', '上传中');
+
+  var data = loadData();
+  var dataStr = JSON.stringify(data);
+  var encrypted = encryptSyncData(dataStr, config.token);
+  if (!encrypted) {
+    setSyncButtonsLoading(false);
+    updateSyncStatus('failed', '加密失败');
+    showToast('数据加密失败');
+    return;
+  }
+
+  var gistData = {
+    description: '家教管理系统数据备份（加密）',
+    public: false,
+    files: {
+      'jiajiao_data.json.enc': {
+        content: encrypted
+      }
+    }
+  };
+
+  var method = config.gistId ? 'PATCH' : 'POST';
+  var url = config.gistId ? GITHUB_API + '/gists/' + config.gistId : GITHUB_API + '/gists';
+
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+  xhr.setRequestHeader('Authorization', 'token ' + config.token);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    setSyncButtonsLoading(false);
+    if (xhr.status === 200 || xhr.status === 201) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        var newConfig = { token: config.token, gistId: resp.id, autoSync: config.autoSync || false };
+        saveSyncConfig(newConfig);
+        var now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_LAST_TIME_KEY, now);
+        updateSyncStatus('synced', '上传成功', 'Gist ID: ' + resp.id);
+        // 更新输入框中的 Gist ID
+        var gistInput = document.getElementById('syncGistIdInput');
+        if (gistInput) gistInput.value = resp.id;
+        showToastSuccess('数据已上传到云端');
+      } catch (e) {
+        updateSyncStatus('failed', '响应解析失败');
+      }
+    } else {
+      updateSyncStatus('failed', '上传失败（' + xhr.status + '）');
+      showToast('上传失败：' + xhr.status + ' ' + xhr.responseText.substring(0, 100));
+    }
+  };
+  xhr.onerror = function() {
+    setSyncButtonsLoading(false);
+    updateSyncStatus('failed', '网络错误');
+    showToast('网络错误');
+  };
+  xhr.send(JSON.stringify(gistData));
+}
+
+// 从 Gist 下载数据
+function syncDownload() {
+  var config = getSyncConfig();
+  if (!config.token) { showToast('请先保存 Token'); return; }
+  if (!config.gistId) { showToast('请先上传数据或填写 Gist ID'); return; }
+  setSyncButtonsLoading(true);
+  updateSyncStatus('syncing', '下载中');
+
+  var url = GITHUB_API + '/gists/' + config.gistId;
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.setRequestHeader('Authorization', 'token ' + config.token);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.onload = function() {
+    setSyncButtonsLoading(false);
+    if (xhr.status === 200) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        var file = resp.files && resp.files['jiajiao_data.json.enc'];
+        if (!file || !file.content) {
+          updateSyncStatus('failed', 'Gist 中无数据文件');
+          showToast('Gist 中未找到数据文件');
+          return;
+        }
+        var decrypted = decryptSyncData(file.content, config.token);
+        if (!decrypted) {
+          updateSyncStatus('failed', '解密失败（Token 可能不匹配）');
+          showToast('数据解密失败，Token 可能不正确');
+          return;
+        }
+        var remoteData = JSON.parse(decrypted);
+        // 数据合并策略：以最新修改时间为准
+        var localData = loadData();
+        var merged = mergeSyncData(localData, remoteData);
+        saveData(merged);
+        var now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_LAST_TIME_KEY, now);
+        updateSyncStatus('synced', '下载并合并成功');
+        showToastSuccess('数据已从云端同步');
+        // 刷新当前页面
+        if (currentUser) {
+          showPage(currentPage);
+        }
+      } catch (e) {
+        updateSyncStatus('failed', '数据处理失败：' + e.message);
+        showToast('数据处理失败：' + e.message);
+      }
+    } else if (xhr.status === 404) {
+      updateSyncStatus('failed', 'Gist 不存在');
+      showToast('Gist 不存在，请检查 Gist ID');
+    } else {
+      updateSyncStatus('failed', '下载失败（' + xhr.status + '）');
+      showToast('下载失败：' + xhr.status);
+    }
+  };
+  xhr.onerror = function() {
+    setSyncButtonsLoading(false);
+    updateSyncStatus('failed', '网络错误');
+    showToast('网络错误');
+  };
+  xhr.send();
+}
+
+// 数据合并策略
+function mergeSyncData(localData, remoteData) {
+  // 简单策略：如果 remote 有而 local 没有，则合并进来
+  // 对于数组类型（teachers, parents, courses, schedules, orders），按 id 合并
+  var result = JSON.parse(JSON.stringify(localData));
+  var arrays = ['teachers', 'parents', 'courses', 'schedules', 'orders', 'admins'];
+  for (var i = 0; i < arrays.length; i++) {
+    var key = arrays[i];
+    if (!remoteData[key]) continue;
+    if (!result[key]) result[key] = [];
+    var localMap = {};
+    for (var j = 0; j < result[key].length; j++) {
+      if (result[key][j].id) localMap[result[key][j].id] = true;
+    }
+    for (var j = 0; j < remoteData[key].length; j++) {
+      if (remoteData[key][j].id && !localMap[remoteData[key][j].id]) {
+        result[key].push(remoteData[key][j]);
+      }
+    }
+  }
+  // 合并 adminPwd（以 local 为准，因为各设备密码可能不同）
+  if (remoteData.adminPwd) result.adminPwd = result.adminPwd || remoteData.adminPwd;
+  return result;
+}
+
+// 切换自动同步
+function toggleAutoSync() {
+  var config = getSyncConfig();
+  config.autoSync = !config.autoSync;
+  saveSyncConfig(config);
+  renderSyncConfigPage();
+  showToast(config.autoSync ? '自动同步已开启' : '自动同步已关闭');
+}
+
+// 执行自动同步（上传）
+function doAutoSync() {
+  var config = getSyncConfig();
+  if (!config.autoSync || !config.token) return;
+  // 静默上传，不弹 Toast
+  var data = loadData();
+  var dataStr = JSON.stringify(data);
+  var encrypted = encryptSyncData(dataStr, config.token);
+  if (!encrypted) return;
+  var gistData = {
+    description: '家教管理系统数据备份（加密）',
+    public: false,
+    files: {
+      'jiajiao_data.json.enc': { content: encrypted }
+    }
+  };
+  var method = config.gistId ? 'PATCH' : 'POST';
+  var url = config.gistId ? GITHUB_API + '/gists/' + config.gistId : GITHUB_API + '/gists';
+  var xhr = new XMLHttpRequest();
+  xhr.open(method, url, true);
+  xhr.setRequestHeader('Authorization', 'token ' + config.token);
+  xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function() {
+    if (xhr.status === 200 || xhr.status === 201) {
+      try {
+        var resp = JSON.parse(xhr.responseText);
+        var newConfig = { token: config.token, gistId: resp.id, autoSync: true };
+        saveSyncConfig(newConfig);
+        var now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_LAST_TIME_KEY, now);
+      } catch (e) {}
+    }
+  };
+  xhr.send(JSON.stringify(gistData));
+}
+
+// 渲染同步配置页面
+function renderSyncConfigPage() {
+  var config = getSyncConfig();
+  // 填充 Token（显示为密码）
+  var tokenInput = document.getElementById('syncTokenInput');
+  if (tokenInput) tokenInput.value = config.token || '';
+  // 填充 Gist ID
+  var gistInput = document.getElementById('syncGistIdInput');
+  if (gistInput) gistInput.value = config.gistId || '';
+  // 更新自动同步按钮
+  var autoBtn = document.getElementById('syncAutoToggleBtn');
+  if (autoBtn) autoBtn.textContent = config.autoSync ? '关闭自动同步' : '开启自动同步';
+  // 更新状态
+  if (config.token && config.gistId) {
+    updateSyncStatus('synced', '已配置', 'Gist ID: ' + config.gistId);
+  } else if (config.token) {
+    updateSyncStatus('none', '已配置 Token，请先上传');
+  } else {
+    updateSyncStatus('none', '未配置');
+  }
+  // 更新自动同步状态文字
+  var autoStatus = document.getElementById('syncAutoStatus');
+  if (autoStatus) {
+    autoStatus.textContent = config.autoSync ? '自动同步已开启（每次保存数据后自动上传）' : '自动同步已关闭';
+  }
+}
+
+// 打开 GitHub Token 页面
+function openGitHubTokenPage() {
+  window.open('https://github.com/settings/tokens/new?scopes=gist&description=家教管理系统同步', '_blank');
+}
+
 /* ========== 工具函数 ========== */
 function esc(s) {
   if (!s) return '';
@@ -2785,7 +3283,15 @@ var actionRoutes = {
   confirmAction: function() { confirmAction(); },
   closeConfirm: function() { closeConfirm(); },
   updateEnrollTimeSlots: function() { updateEnrollTimeSlots(); },
-  updateScheduleTimeOptions: function() { updateScheduleTimeOptions(); }
+  updateScheduleTimeOptions: function() { updateScheduleTimeOptions(); },
+  toggleSyncTokenVisibility: function() { toggleSyncTokenVisibility(); },
+  saveSyncToken: function() { saveSyncToken(); },
+  clearSyncToken: function() { clearSyncToken(); },
+  syncUpload: function() { syncUpload(); },
+  syncDownload: function() { syncDownload(); },
+  testSyncConnection: function() { testSyncConnection(); },
+  toggleAutoSync: function() { toggleAutoSync(); },
+  openGitHubTokenPage: function() { openGitHubTokenPage(); }
 };
 
 document.addEventListener('click', function(e) {
