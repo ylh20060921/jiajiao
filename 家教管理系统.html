@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v1.2</title>
+<title>家教管理助手 v1.3</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -298,7 +298,7 @@ a{text-decoration:none;color:inherit}
 
 <div class="page active" id="page-login">
 <div class="login-page">
-<div class="login-header"><div class="logo-text">家教管理助手 v1.2</div><div class="sub-text">让每一堂课都有序进行</div></div>
+<div class="login-header"><div class="logo-text">家教管理助手 v1.3</div><div class="sub-text">让每一堂课都有序进行</div></div>
 <div class="role-selector">
 <div class="role-tab active" id="roleTeacherTab" data-role="teacher"><div class="role-icon">&#128105;&#8205;&#127979;</div><div class="role-label">教师端</div></div>
 <div class="role-tab" id="roleParentTab" data-role="parent"><div class="role-icon">&#128104;&#8205;&#128105;&#8205;&#128103;</div><div class="role-label">家长端</div></div>
@@ -821,6 +821,8 @@ function renderReviewList() {
   if (reviewTab === 'pending') render(pending, 'reviewPendingList');
   else if (reviewTab === 'approved') render(approved, 'reviewApprovedList');
   else if (reviewTab === 'rejected') render(rejected, 'reviewRejectedList');
+    bindManageTeacherEvents();
+
 }
 
 // ==================== Admin Manage Teacher List ====================
@@ -840,6 +842,8 @@ function renderManageTeacherList() {
     html += '</div></div>';
   }
   $('manageTeacherList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无</div></div>';
+    bindManageTeacherEvents();
+
 }
 
 // ==================== Admin Course List ====================
@@ -858,6 +862,8 @@ function renderAdminCourseList() {
     html += '</div></div>';
   }
   $('adminCourseList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无课程</div></div>';
+    bindAdminCourseEvents();
+
 }function showToast(msg, type) {
   let t = $('toast');
   t.textContent = msg;
@@ -1053,6 +1059,8 @@ function renderAddTeacherList() {
     html += '</div></div>';
   }
   $('addTeacherList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无</div></div>';
+    bindAddTeacherEvents();
+
 }
 showPage = (function(orig) {
   return function(pageId) {
@@ -1377,6 +1385,8 @@ function renderTeacherCourses() {
     html += '</div></div>';
   }
   $('teacherCourseList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无课程</div><div class="empty-text">点击上方按钮新增</div></div>';
+    bindTeacherCourseEvents();
+
 }
 
 function showTeacherCourseModal(mode, cid) {
@@ -1450,6 +1460,8 @@ function renderReceiptList() {
     html += '</div>';
   }
   $('receiptList').innerHTML = html || '<div class="empty-tip" style="padding:20px">暂无订单</div>';
+    bindReceiptEvents();
+
 }
 
 function toggleReceiptPay(oid) {
@@ -1502,6 +1514,8 @@ function renderTeacherParents() {
     html += '</div></div>';
   }
   $('teacherParentList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无</div></div>';
+    bindTeacherParentEvents();
+
 }
 
 function showParentModal(mode, pid) {
@@ -1573,6 +1587,8 @@ function renderTeacherSchedules() {
     html += '</div>';
   }
   $('teacherScheduleList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无排课</div><div class="empty-text">请先确认收款后添加排课</div></div>';
+    bindScheduleEvents();
+
 }
 
 function showScheduleModal() {
@@ -1672,6 +1688,8 @@ function renderTeacherOrders() {
     html += '</div>';
   }
   $('teacherOrderList').innerHTML = html || '<div class="empty-tip"><div class="empty-icon">暂无订单</div></div>';
+    bindOrderEvents();
+
 }
 
 function filterOrders(type) {
@@ -1770,6 +1788,8 @@ function renderEnrollPage() {
   let ps = (G.parentStudents||[]).find(function(x){return x.parentId===currentUser.id;});
   $('enrollStudentName').value = ps ? ps.studentName : '';
   $('enrollRemark').value = '';
+    bindEnrollEvents();
+
 }
 
 function updateEnrollTimeSlots() {
@@ -2065,7 +2085,7 @@ E html>
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v1.2</title>
+<title>家教管理助手 v1.3</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -2360,7 +2380,7 @@ a{text-decoration:none;color:inherit}
 
 <div class="page active" id="page-login">
 <div class="login-page">
-<div class="login-header"><div class="logo-text">家教管理助手 v1.2</div><div class="sub-text">让每一堂课都有序进行</div></div>
+<div class="login-header"><div class="logo-text">家教管理助手 v1.3</div><div class="sub-text">让每一堂课都有序进行</div></div>
 <div class="role-selector">
 <div class="role-tab active" id="roleTeacherTab" data-role="teacher"><div class="role-icon">&#128105;&#8205;&#127979;</div><div class="role-label">教师端</div></div>
 <div class="role-tab" id="roleParentTab" data-role="parent"><div class="role-icon">&#128104;&#8205;&#128105;&#8205;&#128103;</div><div class="role-label">家长端</div></div>
@@ -4083,123 +4103,176 @@ function initParentEvents() {
 
 
 /* ========== 统一事件委托 v1.2 ========== */
-function initAllEvents() {
-  console.log('[initAllEvents] 绑定统一事件委托...');
-  
-  var handlers = {
-    toggleAdminPwd: toggleAdminPwd,
-    adminLogin: adminLogin,
-    logout: logout,
-    addTeacher: addTeacher,
-    closeReviewModal: closeReviewModal,
-    confirmReviewApprove: confirmReviewApprove,
-    closeEditPhoneModal: closeEditPhoneModal,
-    confirmEditPhone: confirmEditPhone,
-    saveAdminCourse: saveAdminCourse,
-    closeAdminCourseModal: closeAdminCourseModal,
-    showTeacherCourseModal: function(el) {
-      var mode = el.getAttribute('data-param') || 'add';
-      var id = el.getAttribute('data-id');
-      showTeacherCourseModal(mode, id);
-    },
-    saveTeacherCourse: saveTeacherCourse,
-    closeTeacherCourseModal: closeTeacherCourseModal,
-    closeReceiptModal: closeReceiptModal,
-    showParentModal: function(el) {
-      var mode = el.getAttribute('data-param') || 'add';
-      var id = el.getAttribute('data-id');
-      showParentModal(mode, id);
-    },
-    saveParent: saveParent,
-    closeParentModal: closeParentModal,
-    showScheduleModal: showScheduleModal,
-    saveSchedule: saveSchedule,
-    closeScheduleModal: closeScheduleModal,
-    submitEnroll: submitEnroll,
-    showEditParentInfo: showEditParentInfo,
-    saveParentInfo: saveParentInfo,
-    closeEditParentInfoModal: closeEditParentInfoModal,
-    goBack: goBack,
-    handleChangePwd: handleChangePwd,
-    closePayModal: closePayModal,
-    confirmPay: confirmPay,
-    closeConfirm: closeConfirm,
-    confirmAction: confirmAction,
-    toggleRegister: toggleRegister,
-    handleLogin: handleLogin,
-    handleRegister: handleRegister,
-    openReviewModal: function(el) {
-      var id = el.getAttribute('data-id');
-      var mode = el.getAttribute('data-param') || 'approve';
-      openReviewModal(id, mode);
-    },
-    deleteRejectedTeacher: function(el) { deleteRejectedTeacher(el.getAttribute('data-id')); },
-    openEditPhoneModal: function(el) { openEditPhoneModal(el.getAttribute('data-id')); },
-    resetTeacherPwd: function(el) { resetTeacherPwd(el.getAttribute('data-id')); },
-    deleteTeacher: function(el) { deleteTeacher(el.getAttribute('data-id')); },
-    showAdminCourseModal: function(el) {
-      var mode = el.getAttribute('data-param') || 'add';
-      var id = el.getAttribute('data-id');
-      showAdminCourseModal(mode, id);
-    },
-    deleteAdminCourse: function(el) { deleteAdminCourse(el.getAttribute('data-id')); },
-    deleteAddTeacher: function(el) { deleteAddTeacher(el.getAttribute('data-id')); },
-    rejectTeacher: function(el) { rejectTeacher(el.getAttribute('data-id')); },
-    openReceiptModal: function(el) { openReceiptModal(el.getAttribute('data-id')); },
-    deleteTeacherCourse: function(el) { deleteTeacherCourse(el.getAttribute('data-id')); },
-    toggleReceiptPay: function(el) { toggleReceiptPay(el.getAttribute('data-id')); },
-    deleteTeacherParent: function(el) { deleteTeacherParent(el.getAttribute('data-id')); },
-    deleteSchedule: function(el) { deleteSchedule(el.getAttribute('data-id')); },
-    toggleOrderPay: function(el) { toggleOrderPay(el.getAttribute('data-id')); },
-    openPayModal: function(el) { openPayModal(el.getAttribute('data-id')); }
-  };
-  
-  document.body.addEventListener('click', function(e) {
-    var target = e.target;
-    while (target && target !== document.body) {
-      var action = target.getAttribute('data-action');
-      if (action) {
-        var parts = action.split(':');
-        var funcName = parts[0];
-        var params = parts.slice(1);
-        
-        // 设置 data-param（如果有参数）
-        if (params.length > 0 && !target.getAttribute('data-param')) {
-          target.setAttribute('data-param', params[0]);
-        }
-        
-        var handler = handlers[funcName];
-        if (handler) {
-          try { handler(target); } catch(err) {
-            console.error('[delegate] ' + funcName + ' error:', err);
-          }
-        } else if (typeof window[funcName] === 'function') {
-          try {
-            if (params.length === 0) window[funcName]();
-            else if (params.length === 1) window[funcName](params[0]);
-            else window[funcName].apply(null, params);
-          } catch(err) {
-            console.error('[delegate fallback] ' + funcName + ' error:', err);
-          }
-        } else {
-          console.warn('[delegate] 未知 action: ' + action);
-        }
-        return;
-      }
-      target = target.parentElement;
+// ==================== v1.3 事件绑定 ====================
+// 直接用 addEventListener 绑定所有交互，不用事件委托路由表
+
+function bindAllEvents() {
+  console.log("[v1.3] 开始绑定事件...");
+  var el, i, els;
+
+  // 辅助函数：绑定 click
+  function on(el, fn) {
+    if (el) el.addEventListener("click", fn);
+  }
+
+  // 辅助函数：按选择器绑定
+  function onAll(selector, fn) {
+    var list = document.querySelectorAll(selector);
+    for (var i = 0; i < list.length; i++) {
+      list[i].addEventListener("click", fn);
     }
+    console.log("  [bind] " + selector + " x" + list.length);
+  }
+
+  // ===== 角色切换登录 Tab =====
+  onAll('.role-tab[data-role="teacher"]', function(){ selectRole("teacher"); });
+  onAll('.role-tab[data-role="parent"]', function(){ selectRole("parent"); });
+
+  // ===== 登录/注册按钮 =====
+  onAll('[data-action="handleLogin"], [data-action="login"]', handleLogin);
+  onAll('[data-action="handleRegister"], [data-action="register"]', handleRegister);
+  onAll('[data-action="toggleRegister"]', toggleRegister);
+  onAll('[data-action="toggleAdminPwd"]', toggleAdminPwd);
+  onAll('[data-action="adminLogin"]', adminLogin);
+  onAll('[data-action="goAdminLogin"]', function(){ showPage("page-admin-login"); });
+  onAll('[data-action="changePwd"]', function(){ showPage("page-change-password"); });
+
+  // ===== 通用 logout =====
+  onAll('[data-action="logout"]', logout);
+
+  // ===== 导航 (navPage + showPage) =====
+  onAll('[data-action="navPage"]', function(){
+    var t = this.getAttribute("data-target");
+    if (t) showPage(t);
   });
-  
-  console.log('[initAllEvents] 事件委托已绑定');
+  onAll('[data-action="showPage"]', function(){
+    var t = this.getAttribute("data-target");
+    var p = this.getAttribute("data-page");
+    showPage(t || p || this.getAttribute("data-action").split(":")[1]);
+  });
+  // 特有 showPage:xxx 格式
+  onAll('[data-action^="showPage:"]', function(){
+    var page = this.getAttribute("data-action").split(":")[1];
+    if (page) showPage(page);
+  });
+
+  // ===== 管理端 =====
+  onAll('[data-action="addTeacher"]', addTeacher);
+  onAll('[data-action="closeReviewModal"]', closeReviewModal);
+  onAll('[data-action="confirmReviewApprove"]', confirmReviewApprove);
+  onAll('[data-action="closeEditPhoneModal"]', closeEditPhoneModal);
+  onAll('[data-action="confirmEditPhone"]', confirmEditPhone);
+  onAll('[data-action="saveAdminCourse"]', saveAdminCourse);
+  onAll('[data-action="closeAdminCourseModal"]', closeAdminCourseModal);
+  onAll('[data-action="showAdminCourseModal:add"]', function(){ showAdminCourseModal("add"); });
+
+  // ===== 教师端 =====
+  onAll('[data-action="showTeacherCourseModal:add"]', function(){ showTeacherCourseModal("add"); });
+  onAll('[data-action="saveTeacherCourse"]', saveTeacherCourse);
+  onAll('[data-action="closeTeacherCourseModal"]', closeTeacherCourseModal);
+  onAll('[data-action="closeReceiptModal"]', closeReceiptModal);
+  onAll('[data-action="showParentModal:add"]', function(){ showParentModal("add"); });
+  onAll('[data-action="saveParent"]', saveParent);
+  onAll('[data-action="closeParentModal"]', closeParentModal);
+  onAll('[data-action="showScheduleModal"]', showScheduleModal);
+  onAll('[data-action="saveSchedule"]', saveSchedule);
+  onAll('[data-action="closeScheduleModal"]', closeScheduleModal);
+
+  // ===== 家长端 =====
+  onAll('[data-action="submitEnroll"]', submitEnroll);
+  onAll('[data-action="showEditParentInfo"], [data-action="editParentInfo"]', showEditParentInfo);
+  onAll('[data-action="closeEditParentInfo"], [data-action="closeEditParentInfoModal"]', closeEditParentInfoModal);
+  onAll('[data-action="saveParentInfo"]', saveParentInfo);
+  onAll('[data-action="goBack"]', goBack);
+  onAll('[data-action="handleChangePwd"], [data-action="changePwdSubmit"]', handleChangePwd);
+  onAll('[data-action="closePayModal"]', closePayModal);
+  onAll('[data-action="confirmPay"]', confirmPay);
+  onAll('[data-action="closeConfirm"]', closeConfirm);
+  onAll('[data-action="confirmAction"]', confirmAction);
+
+  // ===== 筛选 =====
+  onAll('[data-action^="switchReviewTab:"]', function(){
+    switchReviewTab(this.getAttribute("data-action").split(":")[1]);
+  });
+  onAll('[data-action^="filterIncomes:"]', function(){
+    filterIncomes(this.getAttribute("data-action").split(":")[1]);
+  });
+  onAll('[data-action^="filterOrders:"]', function(){
+    filterOrders(this.getAttribute("data-action").split(":")[1]);
+  });
+  onAll('[data-action^="filterReceipt:"]', function(){
+    filterReceipt(this.getAttribute("data-action").split(":")[1]);
+  });
+
+  console.log("[v1.3] 静态事件绑定完成");
 }
 
-// 在 DOMContentLoaded 时初始化
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', initAllEvents);
+// ===== 动态内容事件绑定（在 render 函数后调用） =====
+
+// 管理端 - 教师列表操作按钮
+function bindManageTeacherEvents() {
+  onAll(".btn-approve", function(){ openReviewModal(this.getAttribute("data-id"), "approve"); });
+  onAll(".btn-reject", function(){ openReviewModal(this.getAttribute("data-id"), "reject"); });
+  onAll(".btn-delete", function(){ deleteRejectedTeacher(this.getAttribute("data-id")); });
+  onAll(".btn-edit-phone", function(){ openEditPhoneModal(this.getAttribute("data-id")); });
+  onAll(".btn-reset-pwd", function(){ resetTeacherPwd(this.getAttribute("data-id")); });
+  onAll(".btn-delete-teacher", function(){ deleteTeacher(this.getAttribute("data-id")); });
+  // 审核列表
+  onAll('[data-row-action="approve"]', function(){ openReviewModal(this.getAttribute("data-id"), "approve"); });
+  onAll('[data-row-action="reject"]', function(){ openReviewModal(this.getAttribute("data-id"), "reject"); });
+}
+
+// 管理端 - 课程列表操作按钮
+function bindAdminCourseEvents() {
+  onAll(".action-link[data-action-edit]", function(){ showAdminCourseModal("edit", this.getAttribute("data-id")); });
+  onAll(".action-link[data-action-del]", function(){ deleteAdminCourse(this.getAttribute("data-id")); });
+}
+
+// 管理端 - 新增教师列表操作按钮
+function bindAddTeacherEvents() {
+  onAll(".btn-delete-add-teacher", function(){ deleteAddTeacher(this.getAttribute("data-id")); });
+  onAll(".btn-reject-teacher", function(){ rejectTeacher(this.getAttribute("data-id")); });
+}
+
+// 教师端 - 课程列表操作按钮
+function bindTeacherCourseEvents() {
+  onAll(".action-link-te", function(){ showTeacherCourseModal("edit", this.getAttribute("data-id")); });
+  onAll(".action-link-receipt", function(){ openReceiptModal(this.getAttribute("data-id")); });
+  onAll(".action-link-del-course", function(){ deleteTeacherCourse(this.getAttribute("data-id")); });
+}
+
+// 家长端 - 课程列表操作按钮
+function bindEnrollEvents() {
+  onAll(".btn-enroll", function(){ goEnroll(this.getAttribute("data-id")); });
+}
+
+// 教师端 - 家长列表操作按钮
+function bindTeacherParentEvents() {
+  onAll(".btn-delete-parent", function(){ deleteTeacherParent(this.getAttribute("data-id")); });
+}
+
+// 教师端 - 排课列表操作按钮
+function bindScheduleEvents() {
+  onAll(".btn-delete-schedule", function(){ deleteSchedule(this.getAttribute("data-id")); });
+}
+
+// 教师端 - 订单开关
+function bindOrderEvents() {
+  onAll(".btn-toggle-pay", function(){ toggleOrderPay(this.getAttribute("data-id")); });
+  onAll(".btn-open-pay", function(){ openPayModal(this.getAttribute("data-id")); });
+}
+
+// 教师端 - 收款开关
+function bindReceiptEvents() {
+  onAll(".btn-toggle-receipt", function(){ toggleReceiptPay(this.getAttribute("data-id")); });
+}
+
+// 在 DOMContentLoaded 时绑定
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bindAllEvents);
 } else {
-  initAllEvents();
+  bindAllEvents();
 }
-
 </script>
 </body>
 </html>
