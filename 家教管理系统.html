@@ -4,8 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>家教管理助手 v2.0</title>
-<script src="https://cdn.jsdelivr.net/npm/crypto-js@4.1.1/crypto-js.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -2714,212 +2712,129 @@ function changePwdSubmit() {
   goBack();
 }
 
-/* ========== 全自动云同步模块（GitHub Gist） ========== */
-var GITHUB_TOKEN_HARDCODED = '';  // 用户需在"云同步设置"中填写自己的 GitHub Token
-var GIST_DESCRIPTION = '自动同步数据';
-var GITHUB_API = 'https://api.github.com';
-var SYNC_GIST_ID_KEY = 'jiajiao_gist_id';
-var SYNC_LAST_TIME_KEY = 'jiajiao_sync_last_time';
-var SYNC_DEBOUNCE_TIMER = null;
-var SYNC_UPLOADING = false;
-var SYNC_DOWNLOADING = false;
+/* ========== 全自动云同步模块（JSONBin.io） ========== */
+/*
+ * 使用说明：
+ * 1. 访问 https://jsonbin.io 注册免费账号
+ * 2. 登录后进入 Dashboard -> API Keys -> 复制 Master Key
+ * 3. 创建一个 Bin（或使用下方代码自动创建）
+ * 4. 将下方 JSONBIN_KEY 和 JSONBIN_BIN_ID 替换为真实值
+ * 5. 免费版限制：10,000 请求/月，足够多设备同步使用
+ */
+var JSONBIN_KEY = '$2a$10$C89Gci2rmax1opeUH6Ox9eQNCxCJ2dLUE.wnZh4Sy2LlBH70jSSze';
+var JSONBIN_BIN_ID = '6a16ffc3f47d5c455c3d4eea';
 
-// 获取或创建 Gist ID
-async function getOrCreateGistId() {
-  var gistId = localStorage.getItem(SYNC_GIST_ID_KEY);
-  if (gistId) return gistId;
-  
-  var token = GITHUB_TOKEN_HARDCODED;
-  return new Promise(function(resolve, reject) {
-    var gistData = {
-      description: GIST_DESCRIPTION,
-      public: false,
-      files: { 'jiajiao_sync_meta.json': { content: JSON.stringify({created: new Date().toISOString(), version: 'v2.0'}) } }
-    };
-    var xhr = new XMLHttpRequest();
-    xhr.open('POST', GITHUB_API + '/gists', true);
-    xhr.setRequestHeader('Authorization', 'token ' + token);
-    xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.onload = function() {
-      if (xhr.status === 201 || xhr.status === 200) {
-        try {
-          var resp = JSON.parse(xhr.responseText);
-          localStorage.setItem(SYNC_GIST_ID_KEY, resp.id);
-          updateSyncIndicator('synced', 'Gist已创建');
-          resolve(resp.id);
-        } catch(e) {
-          updateSyncIndicator('failed', '创建Gist解析失败');
-          reject(e);
-        }
-      } else {
-        updateSyncIndicator('failed', '创建Gist失败(' + xhr.status + ')');
-        reject(new Error('创建Gist失败: ' + xhr.status));
-      }
-    };
-    xhr.onerror = function() {
-      updateSyncIndicator('failed', '网络错误');
-      reject(new Error('网络错误'));
-    };
-    xhr.send(JSON.stringify(gistData));
+// 初始化检查
+function initJSONBin() {
+  if (JSONBIN_KEY === 'YOUR_MASTER_KEY_HERE' || JSONBIN_BIN_ID === 'YOUR_BIN_ID_HERE') {
+    updateSyncIndicator('failed', '请配置JSONBin');
+    return false;
+  }
+  updateSyncIndicator('synced', 'JSONBin已配置');
+  return true;
+}
+
+// 上传数据到 JSONBin
+function uploadToJSONBin(data, callback) {
+  if (!initJSONBin()) { if (callback) callback(false); return; }
+  updateSyncIndicator('syncing', '上传中');
+  var jsonStr = JSON.stringify(data);
+  fetch('https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_KEY,
+      'X-Bin-Versioning': 'false'
+    },
+    body: jsonStr
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  })
+  .then(function(result) {
+    var now = new Date().toLocaleString('zh-CN');
+    localStorage.setItem('jiajiao_sync_last_time', now);
+    updateSyncIndicator('synced', now);
+    if (callback) callback(true);
+  })
+  .catch(function(err) {
+    updateSyncIndicator('failed', '上传失败');
+    if (callback) callback(false);
   });
 }
 
-// 派生加密密钥（使用设备标识符）
-function getSyncKey() {
-  var deviceId = localStorage.getItem('jiajiao_device_id');
-  if (!deviceId) {
-    deviceId = 'dev_' + Math.random().toString(36).substr(2, 10) + '_' + Date.now();
-    localStorage.setItem('jiajiao_device_id', deviceId);
-  }
-  try {
-    var hash = CryptoJS.SHA256(deviceId + GITHUB_TOKEN_HARDCODED);
-    return hash.toString(CryptoJS.enc.Hex).substring(0, 32);
-  } catch(e) {
-    var s = deviceId;
-    while (s.length < 32) s += s;
-    return s.substring(0, 32);
-  }
-}
-
-// 加密数据
-function encryptSyncData(dataStr) {
-  var key = getSyncKey();
-  try {
-    return CryptoJS.AES.encrypt(dataStr, key).toString();
-  } catch(e) { return null; }
-}
-
-// 解密数据
-function decryptSyncData(cipherText) {
-  var key = getSyncKey();
-  try {
-    var bytes = CryptoJS.AES.decrypt(cipherText, key);
-    return bytes.toString(CryptoJS.enc.Utf8);
-  } catch(e) { return null; }
+// 从 JSONBin 下载数据
+function downloadFromJSONBin(callback) {
+  if (!initJSONBin()) { if (callback) callback(null); return; }
+  updateSyncIndicator('syncing', '下载中');
+  fetch('https://api.jsonbin.io/v3/b/' + JSONBIN_BIN_ID + '/latest', {
+    headers: {
+      'X-Master-Key': JSONBIN_KEY
+    }
+  })
+  .then(function(res) {
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return res.json();
+  })
+  .then(function(result) {
+    if (!result || !result.record) {
+      updateSyncIndicator('synced', '无云端数据');
+      if (callback) callback(null);
+      return;
+    }
+    updateSyncIndicator('synced', new Date().toLocaleString('zh-CN'));
+    if (callback) callback(result.record);
+  })
+  .catch(function(err) {
+    updateSyncIndicator('failed', '下载失败');
+    if (callback) callback(null);
+  });
 }
 
 // 自动上传（防抖）
+var SYNC_DEBOUNCE_TIMER = null;
+var SYNC_UPLOADING = false;
+
 function autoSyncUpload(data) {
   clearTimeout(SYNC_DEBOUNCE_TIMER);
-  SYNC_DEBOUNCE_TIMER = setTimeout(function() { doSyncUpload(data); }, 800);
+  SYNC_DEBOUNCE_TIMER = setTimeout(function() {
+    if (SYNC_UPLOADING) return;
+    SYNC_UPLOADING = true;
+    uploadToJSONBin(data || loadData(), function(success) {
+      SYNC_UPLOADING = false;
+    });
+  }, 800);
 }
 
-// 执行上传
-function doSyncUpload(data) {
-  if (SYNC_UPLOADING) return;
-  SYNC_UPLOADING = true;
-  updateSyncIndicator('syncing', '上传中');
-  
-  var token = GITHUB_TOKEN_HARDCODED;
-  getOrCreateGistId().then(function(gistId) {
-    var dataStr = JSON.stringify(data || loadData());
-    var encrypted = encryptSyncData(dataStr);
-    if (!encrypted) {
-      SYNC_UPLOADING = false;
-      updateSyncIndicator('failed', '加密失败');
-      return;
-    }
-    
-    var gistData = {
-      description: GIST_DESCRIPTION,
-      files: {
-        'jiajiao_data.json.enc': { content: encrypted },
-        'jiajiao_sync_meta.json': { content: JSON.stringify({updated: new Date().toISOString(), version: 'v2.0'}) }
-      }
-    };
-    
-    var xhr = new XMLHttpRequest();
-    xhr.open('PATCH', GITHUB_API + '/gists/' + gistId, true);
-    xhr.setRequestHeader('Authorization', 'token ' + token);
-    xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.onload = function() {
-      SYNC_UPLOADING = false;
-      if (xhr.status === 200) {
-        var now = new Date().toLocaleString('zh-CN');
-        localStorage.setItem(SYNC_LAST_TIME_KEY, now);
-        updateSyncIndicator('synced', now);
-      } else {
-        updateSyncIndicator('failed', '上传失败(' + xhr.status + ')');
-      }
-    };
-    xhr.onerror = function() {
-      SYNC_UPLOADING = false;
-      updateSyncIndicator('failed', '网络错误');
-    };
-    xhr.send(JSON.stringify(gistData));
-  }).catch(function() {
-    SYNC_UPLOADING = false;
-  });
-}
+// 自动下载并合并
+var SYNC_DOWNLOADING = false;
+var SYNC_LAST_DOWNLOAD = 0;
 
-// 自动从云端下载并合并
 function autoSyncDownload() {
+  var now = Date.now();
+  if (now - SYNC_LAST_DOWNLOAD < 5000) return; // 5秒内不重复下载
   if (SYNC_DOWNLOADING) return;
   SYNC_DOWNLOADING = true;
-  updateSyncIndicator('syncing', '检查更新');
-  
-  var token = GITHUB_TOKEN_HARDCODED;
-  getOrCreateGistId().then(function(gistId) {
-    var xhr = new XMLHttpRequest();
-    xhr.open('GET', GITHUB_API + '/gists/' + gistId, true);
-    xhr.setRequestHeader('Authorization', 'token ' + token);
-    xhr.setRequestHeader('Accept', 'application/vnd.github.v3+json');
-    xhr.timeout = 10000;
-    xhr.onload = function() {
-      SYNC_DOWNLOADING = false;
-      if (xhr.status === 200) {
-        try {
-          var resp = JSON.parse(xhr.responseText);
-          var file = resp.files && resp.files['jiajiao_data.json.enc'];
-          if (!file || !file.content) {
-            updateSyncIndicator('synced', '无云端数据');
-            return;
-          }
-          var decrypted = decryptSyncData(file.content);
-          if (!decrypted) {
-            updateSyncIndicator('failed', '解密失败');
-            return;
-          }
-          var remoteData = JSON.parse(decrypted);
-          var localData = loadData();
-          var merged = mergeSyncData(localData, remoteData);
-          // 只有数据有变化才保存
-          if (JSON.stringify(merged) !== JSON.stringify(localData)) {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
-          }
-          var now = new Date().toLocaleString('zh-CN');
-          localStorage.setItem(SYNC_LAST_TIME_KEY, now);
-          updateSyncIndicator('synced', now);
-          // 如果在首页，刷新显示
-          if (currentUser && currentPage.indexOf('page-login') === -1) {
-            showPage(currentPage);
-          }
-        } catch(e) {
-          updateSyncIndicator('failed', '解析失败');
-        }
-      } else if (xhr.status === 404) {
-        updateSyncIndicator('synced', 'Gist未创建');
-      } else {
-        updateSyncIndicator('failed', '下载失败(' + xhr.status + ')');
-      }
-    };
-    xhr.onerror = function() {
-      SYNC_DOWNLOADING = false;
-      updateSyncIndicator('failed', '网络错误');
-    };
-    xhr.ontimeout = function() {
-      SYNC_DOWNLOADING = false;
-      updateSyncIndicator('failed', '超时');
-    };
-    xhr.send();
-  }).catch(function() {
+  SYNC_LAST_DOWNLOAD = now;
+  downloadFromJSONBin(function(remoteData) {
     SYNC_DOWNLOADING = false;
+    if (!remoteData) return;
+    var localData = loadData();
+    var merged = mergeSyncData(localData, remoteData);
+    var localStr = JSON.stringify(localData);
+    var mergedStr = JSON.stringify(merged);
+    if (mergedStr !== localStr) {
+      localStorage.setItem(STORAGE_KEY, mergedStr);
+      // 刷新当前页面显示
+      if (currentUser && currentPage && currentPage.indexOf('page-login') === -1) {
+        setTimeout(function() { showPage(currentPage); }, 500);
+      }
+    }
   });
 }
 
-// 数据合并策略：以 id 为键合并两个数据集
+// 数据合并策略：以 ID 去重，本地优先，云端补全
 function mergeSyncData(localData, remoteData) {
   var result = JSON.parse(JSON.stringify(localData));
   var arrays = ['teachers', 'parents', 'courses', 'schedules', 'orders', 'admins'];
@@ -2929,25 +2844,28 @@ function mergeSyncData(localData, remoteData) {
     if (!result[key]) result[key] = [];
     var localMap = {};
     for (var j = 0; j < result[key].length; j++) {
-      if (result[key][j].id) localMap[result[key][j].id] = result[key][j];
+      if (result[key][j] && result[key][j].id) localMap[result[key][j].id] = result[key][j];
     }
     for (var j = 0; j < remoteData[key].length; j++) {
       var item = remoteData[key][j];
-      if (!item.id) continue;
+      if (!item || !item.id) continue;
+      // 本地数据优先，云端补全
       if (!localMap[item.id]) {
-        result[key].push(item);
-      } else {
-        // 保留本地版本（本地优先）
+        localMap[item.id] = item;
       }
     }
+    result[key] = [];
+    for (var id in localMap) {
+      result[key].push(localMap[id]);
+    }
   }
-  if (remoteData.adminPwd && !result.adminPwd) result.adminPwd = remoteData.adminPwd;
+  // 保留最新的 adminPwd
+  if (remoteData.adminPwd) result.adminPwd = remoteData.adminPwd;
   return result;
 }
 
 // 同步状态指示器
 function createSyncIndicator() {
-  // 避免重复创建
   if (document.getElementById('sync-indicator')) return;
   var el = document.createElement('div');
   el.id = 'sync-indicator';
@@ -2955,7 +2873,7 @@ function createSyncIndicator() {
   el.title = '点击查看同步详情';
   el.onclick = function() { showSyncDetail(); };
   document.body.appendChild(el);
-  updateSyncIndicator('synced', '');
+  updateSyncIndicator('none', '等待同步');
 }
 
 function updateSyncIndicator(state, message) {
@@ -2963,19 +2881,26 @@ function updateSyncIndicator(state, message) {
   var el = document.getElementById('sync-indicator');
   if (!el) return;
   var dotColor, text;
-  if (state === 'syncing') { dotColor = '#FF9800'; text = '同步中'; }
-  else if (state === 'synced') { dotColor = '#4CAF50'; text = message || '已同步'; }
-  else { dotColor = '#F44336'; text = message || '失败'; }
+  if (state === 'syncing') { dotColor = '#FF9800'; text = message || '同步中'; }
+  else if (state === 'synced') { dotColor = '#4CAF50'; text = '已同步 ' + (message || ''); }
+  else if (state === 'failed') { dotColor = '#F44336'; text = '同步失败'; }
+  else { dotColor = '#CCC'; text = message || '未同步'; }
   el.innerHTML = '<span style="width:7px;height:7px;border-radius:50%;background:' + dotColor + ';display:inline-block;' + (state === 'syncing' ? 'animation:pulse 1.2s infinite' : '') + '"></span><span style="color:#666">' + esc(text) + '</span>';
 }
 
 function showSyncDetail() {
-  var lastTime = localStorage.getItem(SYNC_LAST_TIME_KEY) || '暂无';
-  var gistId = localStorage.getItem(SYNC_GIST_ID_KEY) || '未创建';
-  var msg = '同步状态\n上次同步：' + lastTime + '\nGist ID：' + gistId + '\n\n系统会自动在数据变更时同步，无需手动操作。';
+  var lastTime = localStorage.getItem('jiajiao_sync_last_time') || '暂无';
+  var isConfigured = JSONBIN_KEY !== 'YOUR_MASTER_KEY_HERE' && JSONBIN_BIN_ID !== 'YOUR_BIN_ID_HERE';
+  var msg = 'JSONBin 云同步\n\n上次同步：' + lastTime + '\n\n';
+  if (!isConfigured) {
+    msg += '⚠️ 尚未配置 JSONBin\n请编辑文件中的 JSONBIN_KEY 和 JSONBIN_BIN_ID';
+  } else {
+    msg += '✅ JSONBin 已配置\n系统会自动在数据变更时同步，无需手动操作。';
+  }
   alert(msg);
 }
 
+/* ========== 工具函数 ========== */
 /* ========== 工具函数 ========== *//* ========== 工具函数 ========== */
 function esc(s) {
   if (!s) return '';
