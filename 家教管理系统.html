@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v1.4</title>
+<title>家教管理助手 v1.5</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -298,7 +298,7 @@ a{text-decoration:none;color:inherit}
 
 <div class="page active" id="page-login">
 <div class="login-page">
-<div class="login-header"><div class="logo-text">家教管理助手 v1.3</div><div class="sub-text">让每一堂课都有序进行</div></div>
+<div class="login-header"><div class="logo-text">家教管理助手 v1.5</div><div class="sub-text">让每一堂课都有序进行</div></div>
 <div class="role-selector">
 <div class="role-tab active" id="roleTeacherTab" data-role="teacher"><div class="role-icon">&#128105;&#8205;&#127979;</div><div class="role-label">教师端</div></div>
 <div class="role-tab" id="roleParentTab" data-role="parent"><div class="role-icon">&#128104;&#8205;&#128105;&#8205;&#128103;</div><div class="role-label">家长端</div></div>
@@ -1986,116 +1986,110 @@ window.addEventListener('DOMContentLoaded', function() {
   try { init(); initRoleTabs(); initAllEvents(); } catch(e) { console.error('DOMContentLoaded error:', e); }
 });
 
-// ========== 全端事件统一绑定 (v1.4) ==========
-function initAllEvents() {
-  console.log('[initAllEvents] binding all events');
-  if (typeof document === 'undefined') return;
-  
-  // 事件处理函数映射
-  var handlers = {
-    // === 通用 ===
-    login: function() { console.log('[action] login'); handleLogin(); },
-    register: function() { console.log('[action] register'); handleRegister(); },
-    toggleRegister: function() { console.log('[action] toggleRegister'); toggleRegister(); },
-    goAdminLogin: function() { console.log('[action] goAdminLogin'); showPage('page-admin-login'); },
-    logout: function() { console.log('[action] logout'); logout(); },
-    goBack: function() { console.log('[action] goBack'); goBack(); },
-    adminLogin: function() { console.log('[action] adminLogin'); adminLogin(); },
-    toggleAdminPwd: function() { console.log('[action] toggleAdminPwd'); toggleAdminPwd(); },
-    changePwd: function() { console.log('[action] changePwd'); currentChangePwdRole = 'parent'; showPage('page-change-password'); },
-    changePwdSubmit: function() { console.log('[action] changePwdSubmit'); handleChangePwd(); },
-    showScheduleModal: function() { console.log('[action] showScheduleModal'); showScheduleModal(); },
-    submitEnroll: function() { console.log('[action] submitEnroll'); submitEnroll(); },
-    editParentInfo: function() { console.log('[action] editParentInfo'); showEditParentInfo(); },
-    saveParentInfo: function() { console.log('[action] saveParentInfo'); saveParentInfo(); },
-    saveParent: function() { console.log('[action] saveParent'); saveParent(); },
-    addTeacher: function() { console.log('[action] addTeacher'); addTeacher(); },
-    saveAdminCourse: function() { console.log('[action] saveAdminCourse'); saveAdminCourse(); },
-    saveTeacherCourse: function() { console.log('[action] saveTeacherCourse'); saveTeacherCourse(); },
-    saveSchedule: function() { console.log('[action] saveSchedule'); saveSchedule(); },
-    confirmPay: function() { console.log('[action] confirmPay'); confirmPay(); },
-    confirmAction: function() { console.log('[action] confirmAction'); confirmAction(); },
-    confirmEditPhone: function() { console.log('[action] confirmEditPhone'); confirmEditPhone(); },
-    confirmReviewApprove: function() { console.log('[action] confirmReviewApprove'); confirmReviewApprove(); },
-    rejectTeacher: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] rejectTeacher id=' + id); rejectTeacher(id); } },
-    resetTeacherPwd: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] resetTeacherPwd id=' + id); resetTeacherPwd(id); } },
-    
-    // === 关闭弹窗 ===
-    closePayModal: function() { console.log('[action] closePayModal'); closePayModal(); },
-    closeConfirm: function() { console.log('[action] closeConfirm'); closeConfirm(); },
-    closeEditParentInfo: function() { console.log('[action] closeEditParentInfo'); closeEditParentInfoModal(); },
-    closeEditPhoneModal: function() { console.log('[action] closeEditPhoneModal'); closeEditPhoneModal(); },
-    closeParentModal: function() { console.log('[action] closeParentModal'); closeParentModal(); },
-    closeReceiptModal: function() { console.log('[action] closeReceiptModal'); closeReceiptModal(); },
-    closeReviewModal: function() { console.log('[action] closeReviewModal'); closeReviewModal(); },
-    closeScheduleModal: function() { console.log('[action] closeScheduleModal'); closeScheduleModal(); },
-    closeTeacherCourseModal: function() { console.log('[action] closeTeacherCourseModal'); closeTeacherCourseModal(); },
-    closeAdminCourseModal: function() { console.log('[action] closeAdminCourseModal'); closeAdminCourseModal(); },
-    
-    // === 带 data-id 的操作 ===
-    navPage: function(el) { var t = el.getAttribute('data-target'); if (t) { console.log('[action] navPage -> ' + t); showPage(t); } },
-    goEnroll: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] goEnroll id=' + id); goEnroll(id); } },
-    openPayModal: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] openPayModal id=' + id); openPayModal(id); } },
-    openReceiptModal: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] openReceiptModal id=' + id); openReceiptModal(id); } },
-    openReviewModal: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] openReviewModal id=' + id); openReviewModal(id); } },
-    openEditPhoneModal: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] openEditPhoneModal id=' + id); openEditPhoneModal(id); } },
-    deleteAddTeacher: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteAddTeacher id=' + id); deleteAddTeacher(id); } },
-    deleteTeacher: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteTeacher id=' + id); deleteTeacher(id); } },
-    deleteAdminCourse: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteAdminCourse id=' + id); deleteAdminCourse(id); } },
-    deleteTeacherCourse: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteTeacherCourse id=' + id); deleteTeacherCourse(id); } },
-    deleteSchedule: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteSchedule id=' + id); deleteSchedule(id); } },
-    deleteRejectedTeacher: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteRejectedTeacher id=' + id); deleteRejectedTeacher(id); } },
-    deleteTeacherParent: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] deleteTeacherParent id=' + id); deleteTeacherParent(id); } },
-    toggleOrderPay: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] toggleOrderPay id=' + id); toggleOrderPay(id); } },
-    toggleReceiptPay: function(el) { var id = el.getAttribute('data-id'); if (id) { console.log('[action] toggleReceiptPay id=' + id); toggleReceiptPay(id); } },
-    
-    // === 带 data-action-param 的操作 ===
-    showAdminCourseModal: function(el) { var param = el.getAttribute('data-action-param') || 'add'; var id = el.getAttribute('data-id') || ''; console.log('[action] showAdminCourseModal param=' + param + ' id=' + id); showAdminCourseModal(param, id); },
-    showTeacherCourseModal: function(el) { var param = el.getAttribute('data-action-param') || 'add'; var id = el.getAttribute('data-id') || ''; console.log('[action] showTeacherCourseModal param=' + param + ' id=' + id); showTeacherCourseModal(param, id); },
-    showParentModal: function(el) { var param = el.getAttribute('data-action-param') || 'add'; var id = el.getAttribute('data-id') || ''; console.log('[action] showParentModal param=' + param + ' id=' + id); showParentModal(param, id); },
-    
-    // === 带 data-action-param 的过滤操作 ===
-    filterOrders: function(el) { var param = el.getAttribute('data-action-param') || 'all'; console.log('[action] filterOrders ' + param); filterOrders(param); },
-    filterIncomes: function(el) { var param = el.getAttribute('data-action-param') || 'all'; console.log('[action] filterIncomes ' + param); filterIncomes(param); },
-    filterReceipt: function(el) { var param = el.getAttribute('data-action-param') || 'all'; console.log('[action] filterReceipt ' + param); filterReceipt(param); },
-    switchReviewTab: function(el) { var param = el.getAttribute('data-action-param') || 'pending'; console.log('[action] switchReviewTab ' + param); switchReviewTab(param); },
+// ========== 全端事件直接绑定 (v1.5) ==========
+function bindDataActions(scope) {
+  if (!scope || !scope.querySelectorAll) return;
+  var sel = function(s) { return scope.querySelectorAll(s); };
+  var each = Array.prototype.forEach;
+
+  // role tabs
+  each.call(sel('[data-role]'), function(el) {
+    var role = el.getAttribute('data-role');
+    el.dataset.bound = '1';
+    if (role) { el.addEventListener('click', function(e) { e.preventDefault(); selectRole(role); }); }
+  });
+
+  // === 无参数直接调用 ===
+  var np = {
+    addTeacher: addTeacher, adminLogin: adminLogin,
+    changePwd: function() { currentChangePwdRole='parent'; showPage('page-change-password'); },
+    changePwdSubmit: handleChangePwd,
+    closeAdminCourseModal: closeAdminCourseModal, closeConfirm: closeConfirm,
+    closeEditParentInfo: closeEditParentInfoModal, closeEditPhoneModal: closeEditPhoneModal,
+    closeParentModal: closeParentModal, closePayModal: closePayModal,
+    closeReceiptModal: closeReceiptModal, closeReviewModal: closeReviewModal,
+    closeScheduleModal: closeScheduleModal, closeTeacherCourseModal: closeTeacherCourseModal,
+    confirmAction: confirmAction, confirmEditPhone: confirmEditPhone,
+    confirmPay: confirmPay, confirmReviewApprove: confirmReviewApprove,
+    editParentInfo: showEditParentInfo,
+    goAdminLogin: function() { showPage('page-admin-login'); },
+    goBack: goBack, login: handleLogin, logout: logout, register: handleRegister,
+    saveAdminCourse: saveAdminCourse, saveParent: saveParent, saveParentInfo: saveParentInfo,
+    saveSchedule: saveSchedule, saveTeacherCourse: saveTeacherCourse,
+    showScheduleModal: showScheduleModal, submitEnroll: submitEnroll,
+    toggleAdminPwd: toggleAdminPwd, toggleRegister: toggleRegister
   };
-  
-  // 委托绑定：在 body 上监听所有 [data-action] 点击
-  try {
-    document.body.addEventListener('click', function(e) {
-      var target = e.target;
-      while (target && target !== document.body) {
-        if (target.hasAttribute && target.hasAttribute('data-action')) {
-          var action = target.getAttribute('data-action');
-          var handler = handlers[action];
-          if (handler) {
-            e.preventDefault();
-            handler(target);
-          }
-          return;
-        }
-        target = target.parentElement;
+  Object.keys(np).forEach(function(action) {
+    each.call(sel('[data-action="'+action+'"]'), function(el) {
+      el.dataset.bound = '1';
+      el.addEventListener('click', function(e) { e.preventDefault(); np[action](); });
+    });
+  });
+
+  // === navPage (data-target) ===
+  each.call(sel('[data-action="navPage"]'), function(el) {
+    el.dataset.bound = '1';
+    var t = el.getAttribute('data-target');
+    if (t) { el.addEventListener('click', function(e) { e.preventDefault(); showPage(t); }); }
+  });
+
+  // === data-id ===
+  var idMap = {
+    goEnroll: goEnroll, openPayModal: openPayModal, openReceiptModal: openReceiptModal,
+    openReviewModal: openReviewModal, openEditPhoneModal: openEditPhoneModal,
+    deleteAddTeacher: deleteAddTeacher, deleteTeacher: deleteTeacher,
+    deleteAdminCourse: deleteAdminCourse, deleteTeacherCourse: deleteTeacherCourse,
+    deleteSchedule: deleteSchedule, deleteRejectedTeacher: deleteRejectedTeacher,
+    deleteTeacherParent: deleteTeacherParent,
+    rejectTeacher: rejectTeacher, resetTeacherPwd: resetTeacherPwd,
+    toggleOrderPay: toggleOrderPay, toggleReceiptPay: toggleReceiptPay
+  };
+  Object.keys(idMap).forEach(function(action) {
+    each.call(sel('[data-action="'+action+'"]'), function(el) {
+      el.dataset.bound = '1';
+      var id = el.getAttribute('data-id');
+      if (id) { el.addEventListener('click', function(e) { e.preventDefault(); idMap[action](id); }); }
+    });
+  });
+
+  // === data-action-param (+ optional data-id) ===
+  var pmMap = {
+    showAdminCourseModal: showAdminCourseModal, showTeacherCourseModal: showTeacherCourseModal,
+    showParentModal: showParentModal, filterOrders: filterOrders,
+    filterIncomes: filterIncomes, filterReceipt: filterReceipt,
+    switchReviewTab: switchReviewTab
+  };
+  Object.keys(pmMap).forEach(function(action) {
+    each.call(sel('[data-action="'+action+'"]'), function(el) {
+      el.dataset.bound = '1';
+      var param = el.getAttribute('data-action-param') || '';
+      var id = el.getAttribute('data-id');
+      if (action.indexOf('show')===0 && action.indexOf('Modal')>0) {
+        el.addEventListener('click', function(e) { e.preventDefault(); pmMap[action](param, id || undefined); });
+      } else {
+        el.addEventListener('click', function(e) { e.preventDefault(); pmMap[action](param); });
       }
     });
-    console.log('[initAllEvents] delegated click handler bound on body');
-  } catch(err) {
-    console.error('[initAllEvents] error:', err);
-  }
+  });
 }
 
-// ========== 动态渲染事件绑定 Stub (v1.4) ==========
-// initAllEvents 使用 body 级事件委托，以下函数仅保留空实现避免报错
-function bindAllEvents() { console.log('[stub] bindAllEvents - handled by initAllEvents body delegation'); }
-function bindManageTeacherEvents() { console.log('[stub] bindManageTeacherEvents - handled by initAllEvents'); }
-function bindAdminCourseEvents() { console.log('[stub] bindAdminCourseEvents - handled by initAllEvents'); }
-function bindAddTeacherEvents() { console.log('[stub] bindAddTeacherEvents - handled by initAllEvents'); }
-function bindTeacherCourseEvents() { console.log('[stub] bindTeacherCourseEvents - handled by initAllEvents'); }
-function bindEnrollEvents() { console.log('[stub] bindEnrollEvents - handled by initAllEvents'); }
-function bindTeacherParentEvents() { console.log('[stub] bindTeacherParentEvents - handled by initAllEvents'); }
-function bindScheduleEvents() { console.log('[stub] bindScheduleEvents - handled by initAllEvents'); }
-function bindOrderEvents() { console.log('[stub] bindOrderEvents - handled by initAllEvents'); }
-function bindReceiptEvents() { console.log('[stub] bindReceiptEvents - handled by initAllEvents'); }
+function initAllEvents() {
+  console.log('[initAllEvents] direct binding v1.5');
+  if (typeof document === 'undefined') return;
+  bindDataActions(document);
+}
+
+// ========== 动态渲染事件绑定 (v1.5) ==========
+function bindAllEvents()       { console.log('[bind] AllEvents'); bindDataActions(document); }
+function bindManageTeacherEvents(){ console.log('[bind] ManageTeacher'); bindDataActions(document.querySelector('#page-manage-teacher')); }
+function bindAdminCourseEvents()  { console.log('[bind] AdminCourse'); bindDataActions(document.querySelector('#page-admin-courses')); }
+function bindAddTeacherEvents()   { console.log('[bind] AddTeacher'); bindDataActions(document.querySelector('#page-add-teacher')); }
+function bindTeacherCourseEvents(){ console.log('[bind] TeacherCourse'); bindDataActions(document.querySelector('#page-teacher-courses')); }
+function bindEnrollEvents()       { console.log('[bind] Enroll'); bindDataActions(document.querySelector('#page-enroll')); }
+function bindTeacherParentEvents(){ console.log('[bind] TeacherParent'); bindDataActions(document.querySelector('#page-teacher-parents')); }
+function bindScheduleEvents()     { console.log('[bind] Schedule'); bindDataActions(document.querySelector('#page-schedule')); }
+function bindOrderEvents()        { console.log('[bind] Orders'); bindDataActions(document.querySelector('#page-orders')); }
+function bindReceiptEvents()      { console.log('[bind] Receipts'); bindDataActions(document.querySelector('#page-receipts')); }
   </script>
 </body>
 </html>
