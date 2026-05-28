@@ -1,1 +1,17 @@
-{"teachers": [], "parents": [], "courses": [], "schedules": [], "orders": [], "admins": [], "adminPwd": "123456"}
+{
+  "teachers": [
+    {
+      "id": "id_1779931602938_o6emmy",
+      "phone": "13925983000",
+      "name": "叶励宏",
+      "pwd": "123456",
+      "status": "approved"
+    }
+  ],
+  "parents": [],
+  "courses": [],
+  "schedules": [],
+  "orders": [],
+  "admins": [],
+  "adminPwd": "123456"
+}
