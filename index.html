@@ -3034,7 +3034,19 @@ document.addEventListener('click', function(e) {
 });
 
 /* ========== 初始化 ========== */
+// 版本检查和强制刷新
+function checkVersion() {
+  var currentVersion = '2.1.0'; // GitHub API 版本
+  var storedVersion = localStorage.getItem('jiajiao_version');
+  if (!storedVersion || storedVersion !== currentVersion) {
+    localStorage.clear(); // 清除旧版本数据
+    localStorage.setItem('jiajiao_version', currentVersion);
+    console.log('版本更新: ' + (storedVersion || '未知') + ' -> ' + currentVersion);
+  }
+}
+
 function init() {
+  checkVersion();
   var data = loadData();
   saveData(data);
   showPage('page-login');
