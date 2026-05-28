@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v3.4</title>
+<title>家教管理助手 v3.5</title>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -112,7 +112,7 @@ a{text-decoration:none;color:inherit}
 .btn-login{width:100%;padding:14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,.3);transition:all .25s ease}
 .btn-login:hover{box-shadow:0 6px 24px rgba(99,102,241,.4);transform:translateY(-1px)}
 .back-link{text-align:center;color:#6366F1;font-size:13px;margin-top:16px;cursor:pointer;font-weight:500}
-.form-input-readonly{background:#F1F5F9}
+.form-input-readonly{background:#F1F5F9}.captcha-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}.captcha-canvas{border:1.5px solid #E2E8F0;border-radius:12px;background:#F8FAFC;cursor:pointer;width:130px;height:48px}.captcha-refresh{font-size:12px;color:#6366F1;cursor:pointer;user-select:none;white-space:nowrap;font-weight:500}.captcha-refresh:hover{color:#8B5CF6}
 .admin-header{background:#fff;padding:20px 16px 16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.03);border-radius:0 0 16px 16px}
 .admin-header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .admin-name{font-size:19px;font-weight:800;color:#1E293B}
@@ -440,7 +440,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v3.4</div>
+      <div class="logo-text">家教管理助手 v3.5</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -518,6 +518,16 @@ a{text-decoration:none;color:inherit}
 
           <input class="form-input" id="regStudent" placeholder="请输入学生姓名" />
 
+        </div>
+
+        
+        <div class="form-group">
+          <div class="form-label">验证码</div>
+          <div class="captcha-row">
+            <canvas class="captcha-canvas" id="captchaCanvas" width="130" height="48"></canvas>
+            <span class="captcha-refresh" data-action="refreshCaptcha">看不清？换一张</span>
+          </div>
+          <input class="form-input" id="regCaptcha" placeholder="请输入验证码（不区分大小写）" maxlength="4" style="margin-top:6px;" />
         </div>
 
         <button class="btn-primary" data-action="register">注 册</button>
@@ -1440,7 +1450,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.4</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.5</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -1965,7 +1975,50 @@ function sha256(s) {
 
 var currentRole = 'teacher';
 
-    var roleTabLocked = false;  // 注册页时锁定角色切换
+    var roleTabLocked = false;
+
+var captchaText = '';
+
+function generateCaptcha() {
+  var canvas = document.getElementById('captchaCanvas');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  captchaText = '';
+  for (var i = 0; i < 4; i++) { captchaText += chars.charAt(Math.floor(Math.random() * chars.length)); }
+  var w = canvas.width, h = canvas.height;
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = '#F8FAFC';
+  ctx.fillRect(0, 0, w, h);
+  for (var i = 0; i < 8; i++) {
+    ctx.strokeStyle = 'rgba(' + Math.floor(Math.random()*156+100) + ',' + Math.floor(Math.random()*156+100) + ',' + Math.floor(Math.random()*156+100) + ',.4)';
+    ctx.beginPath();
+    ctx.moveTo(Math.random()*w, Math.random()*h);
+    ctx.lineTo(Math.random()*w, Math.random()*h);
+    ctx.stroke();
+  }
+  for (var i = 0; i < 100; i++) {
+    ctx.fillStyle = 'rgba(' + Math.floor(Math.random()*200+55) + ',' + Math.floor(Math.random()*200+55) + ',' + Math.floor(Math.random()*200+55) + ',.5)';
+    ctx.fillRect(Math.random()*w, Math.random()*h, 2, 2);
+  }
+  ctx.font = 'bold 26px -apple-system,BlinkMacSystemFont,sans-serif';
+  ctx.textBaseline = 'middle';
+  for (var i = 0; i < 4; i++) {
+    ctx.fillStyle = 'rgba(' + Math.floor(Math.random()*80) + ',' + Math.floor(Math.random()*80) + ',' + Math.floor(Math.random()*80) + ',1)';
+    var x = 15 + i * 28 + Math.random() * 8 - 4;
+    var y = h/2 + Math.random() * 10 - 5;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((Math.random() - 0.5) * 0.5);
+    ctx.fillText(captchaText.charAt(i), 0, 0);
+    ctx.restore();
+  }
+}
+
+function refreshCaptcha() {
+  generateCaptcha();
+  document.getElementById('regCaptcha').value = '';
+}  // 注册页时锁定角色切换
 var currentUser = null;
 
 var currentPage = 'page-login';
@@ -2285,6 +2338,10 @@ function handleRegister() {
 
   if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
 
+  var captchaInput = document.getElementById('regCaptcha').value.trim();
+  if (!captchaInput) { showToast('请输入验证码'); return; }
+  if (captchaInput.toUpperCase() !== captchaText.toUpperCase()) { showToast('验证码错误'); generateCaptcha(); document.getElementById('regCaptcha').value = ''; return; }
+
   var data = loadData();
 
   for (var i = 0; i < data.parents.length; i++) {
@@ -2306,6 +2363,7 @@ function handleRegister() {
   document.getElementById('regPhone').value = '';
 
   document.getElementById('regStudent').value = '';
+  document.getElementById('regCaptcha').value = '';
 
   roleTabLocked = false;
   var tTab = document.getElementById('roleTeacherTab');
@@ -2331,6 +2389,7 @@ function toggleRegister() {
       if (pTab) pTab.classList.remove('locked');
     } else {
       lf.style.display = 'none'; rf.style.display = 'block';
+      generateCaptcha();
       roleTabLocked = true;
       var tTab = document.getElementById('roleTeacherTab');
       var pTab = document.getElementById('roleParentTab');
@@ -6325,6 +6384,7 @@ var actionRoutes = {
   register: function() { handleRegister(); },
 
   toggleRegister: function() { toggleRegister(); },
+  refreshCaptcha: function() { refreshCaptcha(); },
 
   goAdminLogin: function() { goAdminLogin(); },
 
