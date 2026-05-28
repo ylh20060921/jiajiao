@@ -8,7 +8,18 @@
       "status": "approved"
     }
   ],
-  "parents": [],
+  "parents": [
+    {
+      "id": "id_1779967444384_8sow6b",
+      "phone": "17881954647",
+      "name": "test1234",
+      "pwd": "123456",
+      "studentName": "abc",
+      "grade": "",
+      "courseId": "",
+      "remark": ""
+    }
+  ],
   "courses": [
     {
       "id": "id_1779932049758_94b9e8",
