@@ -74,15 +74,6 @@
       "amount": 260,
       "paid": true,
       "createTime": "2026年5月28日"
-    },
-    {
-      "id": "id_1779957477071_l2hie6",
-      "teacherId": "id_1779931602938_o6emmy",
-      "parentId": "id_1779932000309_cbktcr",
-      "courseId": "id_1779932065784_qyeg6z",
-      "amount": 260,
-      "paid": false,
-      "createTime": "2026年5月28日"
     }
   ],
   "admins": [],
