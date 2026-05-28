@@ -1267,7 +1267,7 @@ function handleRegister() {
   for (var i = 0; i < data.parents.length; i++) {
     if (data.parents[i].phone === phone) { showToast('该手机号已注册'); return; }
   }
-  var newP = {id: genId(), phone: phone, name: name, pwd: DEFAULT_PWD, studentName: student, grade: '', courseId: '', remark: ''};
+  var newP = {id: genId(), phone: phone, name: name, pwd: DEFAULT_PWD, studentName: student, grade: '', courseId: '', teacherId: '', remark: ''};
   data.parents.push(newP);
   saveData(data);
   showToast('注册成功！默认密码：' + DEFAULT_PWD);
@@ -1725,9 +1725,26 @@ function renderTeacherIndex(data) {
   var todayEl = document.getElementById('tTodayDate');
   if (todayEl) todayEl.textContent = formatDate(new Date());
   var pCount = 0, cCount = 0, oCount = 0, mIncome = 0;
+  // 统计家长数量：通过 teacherId 或订单关联
+  var pSeen = {};
   if (data.parents) {
     for (var i = 0; i < data.parents.length; i++) {
-      if (data.parents[i].teacherId === currentUser.id) pCount++;
+      if (data.parents[i].teacherId === currentUser.id) {
+        pCount++;
+        pSeen[data.parents[i].id] = true;
+      }
+    }
+  }
+  if (data.orders && data.parents) {
+    for (var i = 0; i < data.orders.length; i++) {
+      if (data.orders[i].teacherId === currentUser.id) {
+        for (var j = 0; j < data.parents.length; j++) {
+          if (data.parents[j].id === data.orders[i].parentId && !pSeen[data.parents[j].id]) {
+            pCount++;
+            pSeen[data.parents[j].id] = true;
+          }
+        }
+      }
     }
   }
   if (data.courses) {
@@ -2041,11 +2058,35 @@ function renderTeacherParents(data) {
   var list = document.getElementById('teacherParentList');
   if (!list || !currentUser) return;
   var items = [];
+  var seen = {};
+  
+  // 方式1：通过 teacherId 直接关联的家长
   if (data.parents) {
     for (var i = 0; i < data.parents.length; i++) {
-      if (data.parents[i].teacherId === currentUser.id) items.push(data.parents[i]);
+      if (data.parents[i].teacherId === currentUser.id) {
+        items.push(data.parents[i]);
+        seen[data.parents[i].id] = true;
+      }
     }
   }
+  
+  // 方式2：通过订单自动关联的家长（订单中有该教师ID的家长，即使 teacherId 未设置）
+  if (data.orders && data.parents) {
+    for (var i = 0; i < data.orders.length; i++) {
+      if (data.orders[i].teacherId === currentUser.id) {
+        for (var j = 0; j < data.parents.length; j++) {
+          if (data.parents[j].id === data.orders[i].parentId && !seen[data.parents[j].id]) {
+            items.push(data.parents[j]);
+            seen[data.parents[j].id] = true;
+            // 自动修复：补全家长的 teacherId 和 courseId
+            if (!data.parents[j].teacherId) data.parents[j].teacherId = currentUser.id;
+            if (!data.parents[j].courseId) data.parents[j].courseId = data.orders[i].courseId;
+          }
+        }
+      }
+    }
+  }
+  
   if (items.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-text">暂无家长，请新增</div></div>';
     return;
@@ -2053,7 +2094,21 @@ function renderTeacherParents(data) {
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var p = items[i];
+    // 优先使用订单中的课程，否则使用家长自身的课程
     var cName = getCourseName(data, p.courseId);
+    // 获取最新的订单信息
+    var latestOrder = null;
+    if (data.orders) {
+      for (var j = data.orders.length - 1; j >= 0; j--) {
+        if (data.orders[j].parentId === p.id && data.orders[j].teacherId === currentUser.id) {
+          latestOrder = data.orders[j];
+          break;
+        }
+      }
+    }
+    var orderStatus = latestOrder ? (latestOrder.paid ? '已支付' : '待支付') : '-';
+    var statusTag = latestOrder ? (latestOrder.paid ? 'tag-green' : 'tag-orange') : '';
+    
     html += '<div class="parent-card card">'
       + '<div class="parent-top">'
       + '<div>'
@@ -2063,6 +2118,7 @@ function renderTeacherParents(data) {
       + '<span class="tag tag-blue">' + esc(cName || '未选课程') + '</span>'
       + '</div>'
       + '<div style="font-size:12px;color:#999;margin-top:4px">手机号：' + esc(p.phone) + '</div>'
+      + (latestOrder ? '<div style="font-size:12px;margin-top:2px">订单状态：<span class="tag ' + statusTag + '">' + orderStatus + '</span> 金额：¥' + (latestOrder.amount || 0) + '</div>' : '')
       + '<div class="parent-actions">'
       + '<span class="action-link" data-action="editParent" data-action-param="' + p.id + '">编辑</span>'
       + '<span class="action-link danger" data-action="deleteTeacherParent" data-action-param="' + p.id + '">删除</span>'
