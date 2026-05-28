@@ -1220,77 +1220,13 @@ a{text-decoration:none;color:inherit}
 
       <div class="page-title">我的家长</div>
 
-      <button class="btn-primary add-btn" data-action="showParentModal" data-action-param="add">+ 新增家长</button>
-
     </div>
 
     <div id="teacherParentList"></div>
 
   </div>
 
-  <div class="modal-mask" id="parentModal" style="display:none">
 
-    <div class="modal-content">
-
-      <div class="modal-title" id="pModalTitle">新增家长</div>
-
-      <div class="form-group">
-
-        <div class="form-label">家长姓名</div>
-
-        <input class="form-input" id="pName" placeholder="请输入家长姓名" />
-
-      </div>
-
-      <div class="form-group">
-
-        <div class="form-label">手机号（登录账号）</div>
-
-        <input class="form-input" type="tel" id="pPhone" maxlength="11" placeholder="留空则使用已有手机号" />
-
-      </div>
-
-      <div class="form-group">
-
-        <div class="form-label">学生姓名</div>
-
-        <input class="form-input" id="pStudent" placeholder="请输入学生姓名" />
-
-      </div>
-
-      <div class="form-group">
-
-        <div class="form-label">年级</div>
-
-        <input class="form-input" id="pGrade" placeholder="如：三年级" />
-
-      </div>
-
-      <div class="form-group">
-
-        <div class="form-label">关联课程</div>
-
-        <select class="picker-select" id="pCourseId">
-
-          <option value="">请选择课程</option>
-
-        </select>
-
-      </div>
-
-      <div class="modal-actions">
-
-        <button class="modal-cancel" data-action="closeParentModal">取消</button>
-
-        <button class="modal-confirm" data-action="saveParent">保存</button>
-
-      </div>
-
-    </div>
-
-  </div>
-
-</div>
 
 
 
@@ -2039,8 +1975,6 @@ var currentChangePwdRole = null;
 var pendingEditTeacherId = null;
 
 var pendingEditCourseId = null;
-
-var pendingEditParentId = null;
 
 var pendingScheduleId = null;
 
@@ -4045,7 +3979,7 @@ function renderTeacherParents(data) {
 
       + '<div class="parent-actions">'
 
-      + '<span class="action-link" data-action="editParent" data-action-param="' + p.id + '">编辑</span>'
+      
 
       + '<span class="action-link danger" data-action="deleteTeacherParent" data-action-param="' + p.id + '">删除</span>'
 
@@ -4061,209 +3995,19 @@ function renderTeacherParents(data) {
 
 
 
-function showParentModal(el) {
 
-  var modal = document.getElementById('parentModal');
 
-  if (!modal) return;
 
-  modal.style.display = 'flex';
 
-  var title = document.getElementById('pModalTitle');
 
-  if (title) title.textContent = '新增家长';
 
-  document.getElementById('pName').value = '';
 
-  document.getElementById('pPhone').value = '';
 
-  document.getElementById('pStudent').value = '';
 
-  document.getElementById('pGrade').value = '';
 
-  pendingEditParentId = null;
 
-  var data = loadData();
 
-  var sel = document.getElementById('pCourseId');
 
-  if (sel) {
-
-    sel.innerHTML = '<option value="">请选择课程</option>';
-
-    if (data.courses) {
-
-      for (var i = 0; i < data.courses.length; i++) {
-
-        if (data.courses[i].teacherId === currentUser.id) {
-
-          sel.innerHTML += '<option value="' + data.courses[i].id + '">' + esc(data.courses[i].name) + '</option>';
-
-        }
-
-      }
-
-    }
-
-  }
-
-}
-
-
-
-function saveParent() {
-
-  var name = document.getElementById('pName').value.trim();
-
-  var phone = document.getElementById('pPhone').value.trim();
-
-  var student = document.getElementById('pStudent').value.trim();
-
-  var grade = document.getElementById('pGrade').value.trim();
-
-  var courseId = document.getElementById('pCourseId').value;
-
-  if (!name || !student) { showToast('请填写家长姓名和学生姓名'); return; }
-
-  var data = loadData();
-
-  if (pendingEditParentId) {
-
-    for (var i = 0; i < data.parents.length; i++) {
-
-      if (data.parents[i].id === pendingEditParentId) {
-
-        data.parents[i].name = name;
-
-        data.parents[i].phone = phone || data.parents[i].phone;
-
-        data.parents[i].studentName = student;
-
-        data.parents[i].grade = grade;
-
-        data.parents[i].courseId = courseId;
-
-        break;
-
-      }
-
-    }
-
-    showToastSuccess('家长信息修改成功');
-
-  } else {
-
-    if (!phone) { showToast('新增家长需填写手机号作为登录账号'); return; }
-
-    if (!/^1[3-9]\d{9}$/.test(phone)) { showToast('请输入正确的手机号'); return; }
-
-    for (var i = 0; i < data.parents.length; i++) {
-
-      if (data.parents[i].phone === phone) { showToast('该手机号已注册'); return; }
-
-    }
-
-    data.parents.push({
-
-      id: genId(), phone: phone, name: name, pwd: DEFAULT_PWD,
-
-      studentName: student, grade: grade, courseId: courseId,
-
-      teacherId: currentUser.id, remark: ''
-
-    });
-
-    showToastSuccess('家长添加成功，默认密码：' + DEFAULT_PWD);
-
-  }
-
-  saveData(data);
-
-  pendingEditParentId = null;
-
-  var modal = document.getElementById('parentModal');
-
-  if (modal) modal.style.display = 'none';
-
-  renderTeacherParents(data);
-
-  renderTeacherIndex(data);
-
-}
-
-
-
-function closeParentModal() {
-
-  var modal = document.getElementById('parentModal');
-
-  if (modal) modal.style.display = 'none';
-
-  pendingEditParentId = null;
-
-}
-
-
-
-function editParent(el) {
-
-  var id = el.getAttribute('data-action-param');
-
-  pendingEditParentId = id;
-
-  var data = loadData();
-
-  var p = null;
-
-  for (var i = 0; i < data.parents.length; i++) {
-
-    if (data.parents[i].id === id) { p = data.parents[i]; break; }
-
-  }
-
-  if (!p) return;
-
-  var modal = document.getElementById('parentModal');
-
-  if (modal) modal.style.display = 'flex';
-
-  var title = document.getElementById('pModalTitle');
-
-  if (title) title.textContent = '编辑家长';
-
-  document.getElementById('pName').value = p.name;
-
-  document.getElementById('pPhone').value = p.phone;
-
-  document.getElementById('pStudent').value = p.studentName || '';
-
-  document.getElementById('pGrade').value = p.grade || '';
-
-  var sel = document.getElementById('pCourseId');
-
-  if (sel) {
-
-    sel.innerHTML = '<option value="">请选择课程</option>';
-
-    if (data.courses) {
-
-      for (var i = 0; i < data.courses.length; i++) {
-
-        if (data.courses[i].teacherId === currentUser.id) {
-
-          var selected = data.courses[i].id === p.courseId ? ' selected' : '';
-
-          sel.innerHTML += '<option value="' + data.courses[i].id + '"' + selected + '>' + esc(data.courses[i].name) + '</option>';
-
-        }
-
-      }
-
-    }
-
-  }
-
-}
 
 
 
@@ -6645,14 +6389,6 @@ var actionRoutes = {
   filterReceipt: function(el) { filterReceipt(el); },
 
   toggleReceiptPay: function(el) { toggleReceiptPay(el); },
-
-  showParentModal: function(el) { showParentModal(el); },
-
-  saveParent: function() { saveParent(); },
-
-  closeParentModal: function() { closeParentModal(); },
-
-  editParent: function(el) { editParent(el); },
 
   deleteTeacherParent: function(el) { deleteTeacherParent(el); },
 
