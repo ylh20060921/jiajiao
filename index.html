@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v3.0</title>
+<title>家教管理助手 v3.1</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Hiragino Sans GB','Microsoft YaHei',sans-serif;font-size:14px;line-height:1.6;color:#1E293B;background:linear-gradient(180deg,#F8FAFC 0%,#EEF2FF 50%,#F8FAFC 100%);background-attachment:fixed}
@@ -373,7 +373,7 @@ a{text-decoration:none;color:inherit}
 <div class="page active" id="page-login">
   <div class="login-page">
     <div class="login-header">
-      <div class="logo-text">家教管理助手 v3.0</div>
+      <div class="logo-text">家教管理助手 v3.1</div>
       <div class="sub-text">让每一堂课都有序进行</div>
     </div>
     <div class="role-selector">
@@ -897,7 +897,7 @@ a{text-decoration:none;color:inherit}
           <div style="font-size:11px;opacity:0.85">可选课程</div>
         </div>
         <div class="stat-item">
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.0</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.1</div>
           <div style="font-size:11px;opacity:0.85">版本</div>
         </div>
       </div>
@@ -915,7 +915,7 @@ a{text-decoration:none;color:inherit}
         <div class="quick-icon">&#x1F464;</div>
         <div class="quick-label">个人信息</div>
       </div>
-      <div class="quick-item" data-action="changePwd">
+      <div class="quick-item" data-action="changePwd" data-role="parent">
         <div class="quick-icon">&#x1F512;</div>
         <div class="quick-label">修改密码</div>
       </div>
@@ -3049,7 +3049,7 @@ function closeEditParentInfo() {
 /* ========== 修改密码 ========== */
 function changePwd(el) {
   var role = el.getAttribute('data-role');
-  currentChangePwdRole = role || (currentUser && currentUser.role === 'admin' ? 'admin' : 'teacher');
+  currentChangePwdRole = role || (currentUser ? currentUser.role : 'teacher');
   showPage('page-change-password');
 }
 
@@ -3461,7 +3461,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '3.0'; // GitHub API 版本
+  var currentVersion = '3.1'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
