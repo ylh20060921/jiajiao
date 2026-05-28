@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v3.5</title>
+<title>家教管理助手 v3.6</title>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -112,7 +112,7 @@ a{text-decoration:none;color:inherit}
 .btn-login{width:100%;padding:14px;background:linear-gradient(135deg,#6366F1,#8B5CF6);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:600;margin-top:12px;cursor:pointer;box-shadow:0 4px 16px rgba(99,102,241,.3);transition:all .25s ease}
 .btn-login:hover{box-shadow:0 6px 24px rgba(99,102,241,.4);transform:translateY(-1px)}
 .back-link{text-align:center;color:#6366F1;font-size:13px;margin-top:16px;cursor:pointer;font-weight:500}
-.form-input-readonly{background:#F1F5F9}.captcha-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}.captcha-canvas{border:1.5px solid #E2E8F0;border-radius:12px;background:#F8FAFC;cursor:pointer;width:130px;height:48px}.captcha-refresh{font-size:12px;color:#6366F1;cursor:pointer;user-select:none;white-space:nowrap;font-weight:500}.captcha-refresh:hover{color:#8B5CF6}
+.form-input-readonly{background:#F1F5F9}.phone-error{display:block;font-size:11px;color:#EF4444;margin-top:4px;padding:0 2px;min-height:18px}.form-input.input-error{border-color:#EF4444!important;background:#FEF2F2!important}.form-input.input-valid{border-color:#10B981!important;background:#F0FDF4!important}.captcha-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}.captcha-canvas{border:1.5px solid #E2E8F0;border-radius:12px;background:#F8FAFC;cursor:pointer;width:130px;height:48px}.captcha-refresh{font-size:12px;color:#6366F1;cursor:pointer;user-select:none;white-space:nowrap;font-weight:500}.captcha-refresh:hover{color:#8B5CF6}
 .admin-header{background:#fff;padding:20px 16px 16px;margin-bottom:14px;box-shadow:0 1px 3px rgba(0,0,0,.04),0 4px 16px rgba(0,0,0,.03);border-radius:0 0 16px 16px}
 .admin-header-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
 .admin-name{font-size:19px;font-weight:800;color:#1E293B}
@@ -440,7 +440,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v3.5</div>
+      <div class="logo-text">家教管理助手 v3.6</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -508,7 +508,8 @@ a{text-decoration:none;color:inherit}
 
           <div class="form-label">手机号</div>
 
-          <input class="form-input" type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11" />
+          <input class="form-input" type="tel" id="regPhone" placeholder="请输入手机号" maxlength="11" oninput="validatePhone()" />
+          <span class="phone-error" id="phoneError"></span>
 
         </div>
 
@@ -530,7 +531,7 @@ a{text-decoration:none;color:inherit}
           <input class="form-input" id="regCaptcha" placeholder="请输入验证码（不区分大小写）" maxlength="4" style="margin-top:6px;" />
         </div>
 
-        <button class="btn-primary" data-action="register">注 册</button>
+        <button class="btn-primary" data-action="register" id="regSubmitBtn">注 册</button>
 
         <div class="toggle-link" data-action="toggleRegister">已有账号？返回登录</div>
 
@@ -1450,7 +1451,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.5</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.6</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -2018,7 +2019,83 @@ function generateCaptcha() {
 function refreshCaptcha() {
   generateCaptcha();
   document.getElementById('regCaptcha').value = '';
-}  // 注册页时锁定角色切换
+}  
+function validatePhone() {
+  var input = document.getElementById('regPhone');
+  var errEl = document.getElementById('phoneError');
+  var submitBtn = document.getElementById('regSubmitBtn');
+  if (!input || !errEl) return;
+  var v = input.value.replace(/\s/g, '');
+
+  // Helper for fake number detection
+  function isFakeNumber(s) {
+    if (s.length !== 11) return false;
+    // All same digits
+    if (/^(\d)\1{10}$/.test(s)) return true;
+    // Consecutive ascending
+    var asc = true, desc = true;
+    for (var i = 1; i < 11; i++) {
+      var d0 = parseInt(s[i-1]), d1 = parseInt(s[i]);
+      if (d1 !== d0 + 1) asc = false;
+      if (d1 !== d0 - 1) desc = false;
+    }
+    if (asc || desc) return true;
+    // Repeated pattern like 12341234123
+    if (/^(\d{2,4})\1{2,}/.test(s)) return true;
+    return false;
+  }
+
+  // Reset classes
+  input.classList.remove('input-error', 'input-valid');
+  errEl.textContent = '';
+
+  if (v.length === 0) {
+    if (submitBtn) submitBtn.disabled = false;
+    return;
+  }
+
+  if (!/^\d+$/.test(v)) {
+    errEl.textContent = '手机号只能包含数字';
+    input.classList.add('input-error');
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  if (v.length > 0 && v.charAt(0) !== '1') {
+    errEl.textContent = '手机号必须以1开头';
+    input.classList.add('input-error');
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  if (v.length >= 2 && !/^1[3-9]/.test(v)) {
+    errEl.textContent = '手机号第二位必须是3~9';
+    input.classList.add('input-error');
+    if (submitBtn) submitBtn.disabled = true;
+    return;
+  }
+
+  if (v.length === 11) {
+    if (!/^1[3-9]\d{9}$/.test(v)) {
+      errEl.textContent = '手机号格式不正确';
+      input.classList.add('input-error');
+      if (submitBtn) submitBtn.disabled = true;
+      return;
+    }
+    if (isFakeNumber(v)) {
+      errEl.textContent = '请输入有效的手机号码';
+      input.classList.add('input-error');
+      if (submitBtn) submitBtn.disabled = true;
+      return;
+    }
+    input.classList.add('input-valid');
+    if (submitBtn) submitBtn.disabled = false;
+  } else {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
+// 注册页时锁定角色切换
 var currentUser = null;
 
 var currentPage = 'page-login';
@@ -2328,6 +2405,9 @@ function handleLogin() {
 
 function handleRegister() {
 
+  var submitBtn = document.getElementById('regSubmitBtn');
+  if (submitBtn && submitBtn.disabled) { return; }
+
   var name = document.getElementById('regName').value.trim();
 
   var phone = document.getElementById('regPhone').value.trim();
@@ -2390,6 +2470,7 @@ function toggleRegister() {
     } else {
       lf.style.display = 'none'; rf.style.display = 'block';
       generateCaptcha();
+      validatePhone();
       roleTabLocked = true;
       var tTab = document.getElementById('roleTeacherTab');
       var pTab = document.getElementById('roleParentTab');
