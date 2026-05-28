@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v2.0</title>
+<title>家教管理助手 v2.3</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -279,11 +279,41 @@ a{text-decoration:none;color:inherit}
   </div>
 </div>
 
+<!-- ==================== 教师时间设置弹窗 ==================== -->
+<div class="modal-mask" id="teacherTimeModal" style="display:none">
+  <div class="modal-content">
+    <div class="modal-title">可上课时间设置</div>
+    <div style="font-size:12px;color:#999;text-align:center;margin-bottom:16px">
+      家长报名时将按此时间范围生成可选时段
+    </div>
+    <div class="form-group">
+      <div class="form-label">最早开始时间</div>
+      <select class="picker-select" id="teacherAvailStart">
+        <option value="6">06:00</option><option value="7">07:00</option><option value="8" selected>08:00</option>
+        <option value="9">09:00</option><option value="10">10:00</option><option value="11">11:00</option>
+        <option value="12">12:00</option><option value="13">13:00</option><option value="14">14:00</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <div class="form-label">最晚开始时间</div>
+      <select class="picker-select" id="teacherAvailEnd">
+        <option value="15">15:00</option><option value="16">16:00</option><option value="17">17:00</option>
+        <option value="18">18:00</option><option value="19">19:00</option><option value="20" selected>20:00</option>
+        <option value="21">21:00</option><option value="22">22:00</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <div class="modal-cancel" data-action="closeTeacherTimeModal">取消</div>
+      <div class="modal-confirm" data-action="saveTeacherTime">保存</div>
+    </div>
+  </div>
+</div>
+
 <!-- ==================== 登录页 ==================== -->
 <div class="page active" id="page-login">
   <div class="login-page">
     <div class="login-header">
-      <div class="logo-text">家教管理助手 v2.0</div>
+      <div class="logo-text">家教管理助手 v2.3</div>
       <div class="sub-text">让每一堂课都有序进行</div>
     </div>
     <div class="role-selector">
@@ -574,6 +604,10 @@ a{text-decoration:none;color:inherit}
           <div style="font-size:24px;font-weight:700" id="tMonthIncome">0</div>
           <div style="font-size:11px;opacity:0.85">月收入</div>
         </div>
+        <div class="stat-item" data-action="showTeacherTimeSetting">
+          <div style="font-size:24px;font-weight:700" id="tTimeSetting">&#x1F552;</div>
+          <div style="font-size:11px;opacity:0.85">时间设置</div>
+        </div>
       </div>
     </div>
     <div class="card">
@@ -801,6 +835,10 @@ a{text-decoration:none;color:inherit}
         <div class="stat-item">
           <div style="font-size:24px;font-weight:700" id="pAvailableCount">0</div>
           <div style="font-size:11px;opacity:0.85">可选课程</div>
+        </div>
+        <div class="stat-item">
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v2.3</div>
+          <div style="font-size:11px;opacity:0.85">版本</div>
         </div>
       </div>
     </div>
@@ -2547,11 +2585,25 @@ function updateEnrollTimeSlots() {
   if (!sel || !date) return;
   sel.innerHTML = '';
   var dur = enrollCourseDuration || 90;
-  var startHour = 8, startMin = 0; // 最早 8:00
-  var endLimit = 20 * 60; // 最晚 20:00（以分钟计）
   
-  var cur = startHour * 60 + startMin;
-  while (cur + dur <= endLimit) {
+  // 读取教师端设置的该课程可上课时间
+  var data = loadData();
+  var course = null;
+  for (var i = 0; i < data.courses.length; i++) {
+    if (data.courses[i].id === pendingEnrollCourseId) { course = data.courses[i]; break; }
+  }
+  if (!course) return;
+  var teacher = null;
+  for (var i = 0; i < data.teachers.length; i++) {
+    if (data.teachers[i].id === course.teacherId) { teacher = data.teachers[i]; break; }
+  }
+  
+  // 读取教师的上课时间设置（小时），默认 8:00-20:00
+  var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
+  var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
+  
+  // 每 30 分钟步进生成可选开始时间
+  for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
     var h1 = Math.floor(cur / 60), m1 = cur % 60;
     var end = cur + dur;
     var h2 = Math.floor(end / 60), m2 = end % 60;
@@ -2560,7 +2612,6 @@ function updateEnrollTimeSlots() {
     opt.value = label;
     opt.textContent = label;
     sel.appendChild(opt);
-    cur = end;
   }
 }
 
@@ -2979,6 +3030,54 @@ function getCourseName(data, courseId) {
   return '-';
 }
 
+/* ========== 教师时间设置 ========== */
+function showTeacherTimeSetting() {
+  if (!currentUser) return;
+  var data = loadData();
+  var teacher = null;
+  for (var i = 0; i < data.teachers.length; i++) {
+    if (data.teachers[i].id === currentUser.id) { teacher = data.teachers[i]; break; }
+  }
+  if (!teacher) return;
+  
+  var startSel = document.getElementById('teacherAvailStart');
+  var endSel = document.getElementById('teacherAvailEnd');
+  if (startSel) startSel.value = teacher.availableStart !== undefined ? teacher.availableStart : 8;
+  if (endSel) endSel.value = teacher.availableEnd !== undefined ? teacher.availableEnd : 20;
+  
+  document.getElementById('teacherTimeModal').style.display = 'flex';
+}
+
+function closeTeacherTimeModal() {
+  document.getElementById('teacherTimeModal').style.display = 'none';
+}
+
+function saveTeacherTime() {
+  var startVal = parseInt(document.getElementById('teacherAvailStart').value);
+  var endVal = parseInt(document.getElementById('teacherAvailEnd').value);
+  if (isNaN(startVal) || isNaN(endVal) || startVal >= endVal) {
+    showToast('时间设置无效，请确保最早时间早于最晚时间');
+    return;
+  }
+  var data = loadData();
+  var updated = false;
+  for (var i = 0; i < data.teachers.length; i++) {
+    if (data.teachers[i].id === currentUser.id) {
+      data.teachers[i].availableStart = startVal;
+      data.teachers[i].availableEnd = endVal;
+      updated = true;
+      break;
+    }
+  }
+  if (updated) {
+    saveData(data);
+    showToastSuccess('可上课时间已保存');
+    closeTeacherTimeModal();
+  } else {
+    showToast('保存失败，教师信息不存在');
+  }
+}
+
 /* ========== 事件委托系统 ========== */
 var actionRoutes = {
   selectRole: function(el) { selectRole(el); },
@@ -3037,6 +3136,9 @@ var actionRoutes = {
   closeEditParentInfo: function() { closeEditParentInfo(); },
   confirmAction: function() { confirmAction(); },
   closeConfirm: function() { closeConfirm(); },
+  showTeacherTimeSetting: function() { showTeacherTimeSetting(); },
+  closeTeacherTimeModal: function() { closeTeacherTimeModal(); },
+  saveTeacherTime: function() { saveTeacherTime(); },
   updateEnrollTimeSlots: function() { updateEnrollTimeSlots(); },
   updateScheduleTimeOptions: function() { updateScheduleTimeOptions(); },
   // 全自动同步无需手动操作
@@ -3054,7 +3156,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '2.2.0'; // GitHub API 版本
+  var currentVersion = '2.3'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
