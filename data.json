@@ -42,8 +42,29 @@
       "subject": ""
     }
   ],
-  "schedules": [],
-  "orders": [],
+  "schedules": [
+    {
+      "id": "id_1779938169546_fex190",
+      "teacherId": "id_1779931602938_o6emmy",
+      "parentId": "id_1779932000309_cbktcr",
+      "courseId": "id_1779932049758_94b9e8",
+      "date": "2026-05-31",
+      "timeSlot": "09:30-12:00",
+      "price": 260,
+      "createTime": "2026-05-28T03:16:09.547Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "id_1779938169546_b5rats",
+      "teacherId": "id_1779931602938_o6emmy",
+      "parentId": "id_1779932000309_cbktcr",
+      "courseId": "id_1779932049758_94b9e8",
+      "amount": 260,
+      "paid": false,
+      "createTime": "2026年5月28日"
+    }
+  ],
   "admins": [],
   "adminPwd": "123456"
 }
