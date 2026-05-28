@@ -2499,6 +2499,9 @@ function renderParentCourses(data) {
   }
 }
 
+// 当前报名课程时长（分钟），供 updateEnrollTimeSlots 使用
+var enrollCourseDuration = 90;
+
 /* ========== 家长报名 ========== */
 function renderEnrollPage(data, courseId) {
   var header = document.getElementById('enrollCourseHeader');
@@ -2508,12 +2511,13 @@ function renderEnrollPage(data, courseId) {
     if (data.courses[i].id === courseId) { c = data.courses[i]; break; }
   }
   if (!c) { showToast('课程不存在'); return; }
+  enrollCourseDuration = c.duration || 90;
   header.innerHTML = '<div class="course-header">'
     + '<div class="course-header-name">' + esc(c.name) + '</div>'
     + '<div class="course-header-desc">' + esc(c.desc || '暂无说明') + '</div>'
     + '<div class="course-header-meta">'
     + '<span class="header-tag">教师：' + esc(getTeacherName(data, c.teacherId)) + '</span>'
-    + '<span class="header-tag">' + (c.duration||90) + '分钟/次</span>'
+    + '<span class="header-tag">' + enrollCourseDuration + '分钟/次</span>'
     + (c.grade ? '<span class="header-tag">年级：' + esc(c.grade) + '</span>' : '')
     + (c.subject ? '<span class="header-tag">科目：' + esc(c.subject) + '</span>' : '')
     + '</div>'
@@ -2542,13 +2546,26 @@ function updateEnrollTimeSlots() {
   var sel = document.getElementById('enrollTimeSlot');
   if (!sel || !date) return;
   sel.innerHTML = '';
-  var times = ['08:00-09:30','10:00-11:30','14:00-15:30','16:00-17:30','19:00-20:30'];
-  for (var i = 0; i < times.length; i++) {
+  var dur = enrollCourseDuration || 90;
+  var startHour = 8, startMin = 0; // 最早 8:00
+  var endLimit = 20 * 60; // 最晚 20:00（以分钟计）
+  
+  var cur = startHour * 60 + startMin;
+  while (cur + dur <= endLimit) {
+    var h1 = Math.floor(cur / 60), m1 = cur % 60;
+    var end = cur + dur;
+    var h2 = Math.floor(end / 60), m2 = end % 60;
+    var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
     var opt = document.createElement('option');
-    opt.value = times[i];
-    opt.textContent = times[i];
+    opt.value = label;
+    opt.textContent = label;
     sel.appendChild(opt);
+    cur = end;
   }
+}
+
+function pad2(n) {
+  return n < 10 ? '0' + n : '' + n;
 }
 
 function submitEnroll() {
@@ -3037,7 +3054,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '2.1.0'; // GitHub API 版本
+  var currentVersion = '2.2.0'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
