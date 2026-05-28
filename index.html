@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v3.3</title>
+<title>家教管理助手 v3.4</title>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -333,6 +333,11 @@ a{text-decoration:none;color:inherit}
     cursor: not-allowed;
     pointer-events: none;
   }
+.time-slot-group{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.time-slot-check{display:flex;align-items:center;gap:6px;padding:8px 14px;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;cursor:pointer;transition:all .2s;user-select:none;background:#fff}
+.time-slot-check:hover{border-color:#6366F1;background:#EEF4FF}
+.time-slot-check.selected{border-color:#6366F1;background:#EEF2FF;color:#4338CA;font-weight:600}
+.time-slot-check input{display:none}
 </style>
 
 </head>
@@ -435,7 +440,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v3.3</div>
+      <div class="logo-text">家教管理助手 v3.4</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -1499,7 +1504,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.3</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.4</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -1641,7 +1646,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="form-label">上课时段</div>
 
-        <select class="picker-select" id="enrollTimeSlot"></select>
+        <div id="enrollTimeSlotGroup" class="time-slot-group"></div>
 
       </div>
 
@@ -5458,9 +5463,9 @@ function renderEnrollPage(data, courseId) {
 
   if (dateInput) dateInput.value = '';
 
-  var timeSel = document.getElementById('enrollTimeSlot');
+  var timeSlotGroup = document.getElementById('enrollTimeSlotGroup');
 
-  if (timeSel) timeSel.innerHTML = '<option value="">请先选择日期</option>';
+  if (timeSlotGroup) timeSlotGroup.innerHTML = '<span style="color:#94A3B8;font-size:13px">请先选择日期</span>';
 
 }
 
@@ -5486,17 +5491,15 @@ function updateEnrollTimeSlots() {
 
   var date = document.getElementById('enrollDate').value;
 
-  var sel = document.getElementById('enrollTimeSlot');
+  var group = document.getElementById('enrollTimeSlotGroup');
 
-  if (!sel || !date) return;
+  if (!group || !date) return;
 
-  sel.innerHTML = '';
+  group.innerHTML = '';
 
   var dur = enrollCourseDuration || 90;
 
   
-
-  // 读取教师端设置的该课程可上课时间
 
   var data = loadData();
 
@@ -5520,15 +5523,13 @@ function updateEnrollTimeSlots() {
 
   
 
-  // 读取教师的上课时间设置（小时），默认 8:00-20:00
-
   var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
 
   var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
 
   
 
-  // 每 30 分钟步进生成可选开始时间
+  var hasAny = false;
 
   for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
 
@@ -5539,8 +5540,6 @@ function updateEnrollTimeSlots() {
     var h2 = Math.floor(end / 60), m2 = end % 60;
 
     var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
-
-    // 检查该时段是否已被同一老师在同一日期占用（通过已生成的排课检查）
 
     var occupied = false;
 
@@ -5564,33 +5563,63 @@ function updateEnrollTimeSlots() {
 
     if (!occupied) {
 
-      var opt = document.createElement('option');
+      hasAny = true;
 
-      opt.value = label;
+      var lbl = document.createElement('label');
 
-      opt.textContent = label;
+      lbl.className = 'time-slot-check';
 
-      sel.appendChild(opt);
+      lbl.onclick = function() { toggleTimeSlot(this); };
+
+      lbl.innerHTML = '<input type="checkbox" value="' + label + '">' + label;
+
+      group.appendChild(lbl);
 
     }
 
   }
 
-  // 如果所有时段都被占用，显示提示
+  if (!hasAny) {
 
-  if (sel.options.length === 0) {
-
-    var opt = document.createElement('option');
-
-    opt.value = '';
-
-    opt.textContent = '该日期暂无可用时段';
-
-    opt.disabled = true;
-
-    sel.appendChild(opt);
+    group.innerHTML = '<span style="color:#94A3B8;font-size:13px">该日期暂无可用时段</span>';
 
   }
+
+  updateEnrollFeeTotal();
+
+}
+
+
+
+function toggleTimeSlot(el) {
+
+  var cb = el.querySelector('input');
+
+  cb.checked = !cb.checked;
+
+  el.classList.toggle('selected', cb.checked);
+
+  updateEnrollFeeTotal();
+
+}
+
+
+
+function updateEnrollFeeTotal() {
+
+  var checked = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check.selected');
+
+  var price = 0;
+
+  var data = loadData();
+
+  for (var i = 0; i < data.courses.length; i++) {
+
+    if (data.courses[i].id === pendingEnrollCourseId) { price = data.courses[i].price; break; }
+
+  }
+
+  document.getElementById('feeTotal').textContent = '¥' + (checked.length * price);
 
 }
 
@@ -5608,13 +5637,13 @@ function submitEnroll() {
 
   var date = document.getElementById('enrollDate').value;
 
-  var timeSlot = document.getElementById('enrollTimeSlot').value;
+  var checkedEls = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check.selected');
 
   var studentName = document.getElementById('enrollStudentName').value.trim();
 
   var remark = document.getElementById('enrollRemark').value.trim();
 
-  if (!date || !timeSlot || !studentName) { showToast('请填写完整信息'); return; }
+  if (!date || checkedEls.length === 0 || !studentName) { showToast('请填写完整信息'); return; }
 
   var data = loadData();
 
@@ -5630,23 +5659,36 @@ function submitEnroll() {
 
   if (c.active === false) { showToast('该课程已取消，无法报名'); return; }
 
-  data.orders.push({
+  // 为每个选中的时段创建订单和排课记录，独立冲突检测
+  var slots = [];
+  for (var i = 0; i < checkedEls.length; i++) {
+    var slot = checkedEls[i].querySelector('input').value;
+    // 冲突检测
+    var conflict = false;
+    if (data.schedules) {
+      for (var k = 0; k < data.schedules.length; k++) {
+        var sch = data.schedules[k];
+        if (sch.teacherId === c.teacherId && sch.date === date && sch.timeSlot === slot) {
+          conflict = true;
+          break;
+        }
+      }
+    }
+    if (!conflict) {
+      slots.push(slot);
+      data.orders.push({
+        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+        courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
+      });
+      data.schedules.push({
+        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+        courseId: c.id, date: date, timeSlot: slot,
+        price: c.price, createTime: new Date().toISOString()
+      });
+    }
+  }
 
-    id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-
-    courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
-
-  });
-
-  data.schedules.push({
-
-    id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-
-    courseId: c.id, date: date, timeSlot: timeSlot,
-
-    price: c.price, createTime: new Date().toISOString()
-
-  });
+  if (slots.length === 0) { showToast('所选时段均已被占用，请重新选择'); return; }
 
   currentUser.studentName = studentName;
 
@@ -5670,7 +5712,7 @@ function submitEnroll() {
 
   saveData(data);
 
-  showToastSuccess('报名成功！请尽快支付');
+  showToastSuccess('报名成功！共报名' + slots.length + '个时段，请尽快支付');
 
   showPage('page-parent-course');
 
@@ -6692,7 +6734,7 @@ document.addEventListener('click', function(e) {
 
 function checkVersion() {
 
-  var currentVersion = '3.3'; // GitHub API 版本
+  var currentVersion = '3.4'; // GitHub API 版本
 
   var storedVersion = localStorage.getItem('jiajiao_version');
 
