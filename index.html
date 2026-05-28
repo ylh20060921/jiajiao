@@ -322,6 +322,11 @@ a{text-decoration:none;color:inherit}
 .sync-conflict-modal{max-width:450px}
 .conflict-list{max-height:200px;overflow-y:auto;margin:12px 0}
 .conflict-item{padding:10px 0;border-bottom:1px solid #F1F5F9;font-size:13px}
+  .role-tab.locked {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
 </style>
 </head>
 <body>
@@ -1176,6 +1181,7 @@ function sha256(s) {
 }
 
 var currentRole = 'teacher';
+    var roleTabLocked = false;  // 注册页时锁定角色切换
 var currentUser = null;
 var currentPage = 'page-login';
 var currentChangePwdRole = null;
@@ -1282,6 +1288,7 @@ function showTabBar(role) {
 
 /* ========== 角色选择 ========== */
 function selectRole(el) {
+  if (roleTabLocked) return;  // 注册页期间禁止切换角色
   var role = el.getAttribute('data-role');
   currentRole = role;
   var tTab = document.getElementById('roleTeacherTab');
@@ -1345,6 +1352,11 @@ function handleRegister() {
   document.getElementById('regName').value = '';
   document.getElementById('regPhone').value = '';
   document.getElementById('regStudent').value = '';
+  roleTabLocked = false;
+  var tTab = document.getElementById('roleTeacherTab');
+  var pTab = document.getElementById('roleParentTab');
+  if (tTab) tTab.classList.remove('locked');
+  if (pTab) pTab.classList.remove('locked');
   toggleRegister();
 }
 
@@ -1352,8 +1364,21 @@ function toggleRegister() {
   var lf = document.getElementById('loginForm');
   var rf = document.getElementById('registerForm');
   if (lf && rf) {
-    if (lf.style.display === 'none') { lf.style.display = 'block'; rf.style.display = 'none'; }
-    else { lf.style.display = 'none'; rf.style.display = 'block'; }
+    if (lf.style.display === 'none') {
+      lf.style.display = 'block'; rf.style.display = 'none';
+      roleTabLocked = false;
+      var tTab = document.getElementById('roleTeacherTab');
+      var pTab = document.getElementById('roleParentTab');
+      if (tTab) tTab.classList.remove('locked');
+      if (pTab) pTab.classList.remove('locked');
+    } else {
+      lf.style.display = 'none'; rf.style.display = 'block';
+      roleTabLocked = true;
+      var tTab = document.getElementById('roleTeacherTab');
+      var pTab = document.getElementById('roleParentTab');
+      if (tTab) tTab.classList.add('locked');
+      if (pTab) pTab.classList.add('locked');
+    }
   }
 }
 
@@ -1382,6 +1407,11 @@ function goAdminLogin() {
 /* ========== 退出 ========== */
 function logout() {
   currentUser = null;
+  roleTabLocked = false;
+  var tTab = document.getElementById('roleTeacherTab');
+  var pTab = document.getElementById('roleParentTab');
+  if (tTab) tTab.classList.remove('locked');
+  if (pTab) pTab.classList.remove('locked');
   showPage('page-login');
 }
 
@@ -1390,6 +1420,11 @@ function goBack() {
     showPage('page-' + currentChangePwdRole + '-index');
     currentChangePwdRole = null;
   } else {
+    roleTabLocked = false;
+    var tTab = document.getElementById('roleTeacherTab');
+    var pTab = document.getElementById('roleParentTab');
+    if (tTab) tTab.classList.remove('locked');
+    if (pTab) pTab.classList.remove('locked');
     showPage('page-login');
   }
 }
