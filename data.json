@@ -1,6 +1,17 @@
 {
   "teachers": [],
-  "parents": [],
+  "parents": [
+    {
+      "id": "id_1779969423381_psr4ft",
+      "phone": "17881954647",
+      "name": "ywy",
+      "pwd": "123456",
+      "studentName": "qwe",
+      "grade": "",
+      "courseId": "",
+      "remark": ""
+    }
+  ],
   "courses": [
     {
       "id": "id_1779932049758_94b9e8",
