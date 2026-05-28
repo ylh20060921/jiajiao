@@ -20,7 +20,18 @@
       "remark": ""
     }
   ],
-  "courses": [],
+  "courses": [
+    {
+      "id": "id_1779932049758_94b9e8",
+      "teacherId": "id_1779931602938_o6emmy",
+      "name": "初中物理",
+      "price": 260,
+      "duration": 150,
+      "desc": "",
+      "grade": "",
+      "subject": ""
+    }
+  ],
   "schedules": [],
   "orders": [],
   "admins": [],
