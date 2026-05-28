@@ -1566,10 +1566,11 @@ function renderAdminCourseList(data) {
   var html = '';
   for (var i = 0; i < filtered.length; i++) {
     var c = filtered[i];
+    var isActive = (c.active !== false);
     var tName = getTeacherName(data, c.teacherId);
     html += '<div class="course-card card">'
       + '<div class="course-top">'
-      + '<div class="course-name">' + esc(c.name) + '</div>'
+      + '<div class="course-name">' + esc(c.name) + (isActive ? '' : ' <span class="tag tag-red">已取消</span>') + '</div>'
       + '<div class="course-price">¥' + c.price + '/次</div>'
       + '</div>'
       + '<div class="course-meta">'
@@ -1579,8 +1580,10 @@ function renderAdminCourseList(data) {
       + '<span class="meta-item">' + (c.duration||90) + '分钟/次</span>'
       + '</div>'
       + '<div class="course-actions">'
-      + '<span class="action-link" data-action="editAdminCourse" data-action-param="' + c.id + '">编辑</span>'
-      + '<span class="action-link danger" data-action="deleteAdminCourse" data-action-param="' + c.id + '">删除</span>'
+      + (isActive ? '<span class="action-link" data-action="editAdminCourse" data-action-param="' + c.id + '">编辑</span>' : '')
+      + '<span class="action-link ' + (isActive ? 'danger' : '') + '" data-action="' + (isActive ? 'deleteAdminCourse' : 'restoreAdminCourse') + '" data-action-param="' + c.id + '">'
+      + (isActive ? '取消课程' : '恢复课程')
+      + '</span>'
       + '</div>'
       + '</div>';
   }
@@ -1641,7 +1644,7 @@ function saveAdminCourse() {
   } else {
     data.courses.push({
       id: genId(), teacherId: tId, name: name, price: parseInt(price),
-      duration: parseInt(duration), desc: desc, grade: grade, subject: subject
+      duration: parseInt(duration), desc: desc, grade: grade, subject: subject, active: true
     });
     showToastSuccess('课程新增成功');
   }
@@ -1693,13 +1696,26 @@ function editAdminCourse(el) {
 
 function deleteAdminCourse(el) {
   var id = el.getAttribute('data-action-param');
-  showConfirm('确认删除', '确定要删除该课程？', function() {
+  showConfirm('确认取消', '确定要取消该课程？取消后家长端将不再显示报名入口，但已确认的排课不受影响。', function() {
     var data = loadData();
-    data.courses = data.courses.filter(function(c) { return c.id !== id; });
+    for (var i = 0; i < data.courses.length; i++) {
+      if (data.courses[i].id === id) { data.courses[i].active = false; break; }
+    }
     saveData(data);
     renderAdminCourseList(data);
-    showToastSuccess('删除成功');
+    showToastSuccess('课程已取消');
   });
+}
+
+function restoreAdminCourse(el) {
+  var id = el.getAttribute('data-action-param');
+  var data = loadData();
+  for (var i = 0; i < data.courses.length; i++) {
+    if (data.courses[i].id === id) { data.courses[i].active = true; break; }
+  }
+  saveData(data);
+  renderAdminCourseList(data);
+  showToastSuccess('课程已恢复');
 }
 
 function filterAdminCourse() {
@@ -1828,6 +1844,7 @@ function renderTeacherCourses(data) {
   var html = '';
   for (var i = 0; i < items.length; i++) {
     var c = items[i];
+    var isActive = (c.active !== false);
     var orderCount = 0;
     if (data.orders) {
       for (var j = 0; j < data.orders.length; j++) {
@@ -1836,7 +1853,7 @@ function renderTeacherCourses(data) {
     }
     html += '<div class="course-card card">'
       + '<div class="course-top">'
-      + '<div class="course-name">' + esc(c.name) + '</div>'
+      + '<div class="course-name">' + esc(c.name) + (isActive ? '' : ' <span class="tag tag-red">已取消</span>') + '</div>'
       + '<div class="course-price">¥' + c.price + '/次</div>'
       + '</div>'
       + '<div class="course-meta">'
@@ -1847,9 +1864,13 @@ function renderTeacherCourses(data) {
       + '</div>'
       + (c.desc ? '<div style="font-size:12px;color:#999;margin-top:6px">' + esc(c.desc) + '</div>' : '')
       + '<div class="course-actions">'
-      + '<span class="action-link" data-action="editTeacherCourse" data-action-param="' + c.id + '">编辑</span>'
+      + (isActive
+          ? '<span class="action-link" data-action="editTeacherCourse" data-action-param="' + c.id + '">编辑</span>'
+          : '')
+      + '<span class="action-link" data-action="' + (isActive ? 'deleteTeacherCourse' : 'restoreTeacherCourse') + '" data-action-param="' + c.id + '">'
+      + (isActive ? '取消课程' : '恢复课程')
+      + '</span>'
       + '<span class="action-link" data-action="openReceiptModal" data-action-param="' + c.id + '">收款</span>'
-      + '<span class="action-link danger" data-action="deleteTeacherCourse" data-action-param="' + c.id + '">删除</span>'
       + '</div>'
       + '</div>';
   }
@@ -1890,7 +1911,7 @@ function saveTeacherCourse() {
   } else {
     data.courses.push({
       id: genId(), teacherId: currentUser.id, name: name,
-      price: parseInt(price), duration: parseInt(duration), desc: desc, grade: '', subject: ''
+      price: parseInt(price), duration: parseInt(duration), desc: desc, grade: '', subject: '', active: true
     });
     showToastSuccess('课程新增成功');
   }
@@ -1900,6 +1921,18 @@ function saveTeacherCourse() {
   if (modal) modal.style.display = 'none';
   renderTeacherCourses(data);
   renderTeacherIndex(data);
+}
+
+function restoreTeacherCourse(el) {
+  var id = el.getAttribute('data-action-param');
+  var data = loadData();
+  for (var i = 0; i < data.courses.length; i++) {
+    if (data.courses[i].id === id) { data.courses[i].active = true; break; }
+  }
+  saveData(data);
+  renderTeacherCourses(data);
+  renderTeacherIndex(data);
+  showToastSuccess('课程已恢复');
 }
 
 function closeTeacherCourseModal() {
@@ -1929,13 +1962,15 @@ function editTeacherCourse(el) {
 
 function deleteTeacherCourse(el) {
   var id = el.getAttribute('data-action-param');
-  showConfirm('确认删除', '确定要删除该课程？相关报名记录将保留。', function() {
+  showConfirm('确认取消', '确定要取消该课程？取消后家长端将不再显示报名入口，但已确认的排课不受影响继续保留。', function() {
     var data = loadData();
-    data.courses = data.courses.filter(function(c) { return c.id !== id; });
+    for (var i = 0; i < data.courses.length; i++) {
+      if (data.courses[i].id === id) { data.courses[i].active = false; break; }
+    }
     saveData(data);
     renderTeacherCourses(data);
     renderTeacherIndex(data);
-    showToastSuccess('删除成功');
+    showToastSuccess('课程已取消');
   });
 }
 
@@ -2627,7 +2662,11 @@ function renderParentIndex(data) {
       }
     }
   }
-  if (data.courses) availCount = data.courses.length;
+  if (data.courses) {
+    for (var i = 0; i < data.courses.length; i++) {
+      if (data.courses[i].active !== false) availCount++;
+    }
+  }
   var pc = document.getElementById('pCourseCount');
   var uc = document.getElementById('pUnpaidCount');
   var ac = document.getElementById('pAvailableCount');
@@ -2640,7 +2679,10 @@ function renderParentIndex(data) {
 function renderPAllCourses(data) {
   var list = document.getElementById('pAllCourses');
   if (!list) return;
-  var items = data.courses || [];
+  var items = [];
+  for (var i = 0; i < data.courses.length; i++) {
+    if (data.courses[i].active !== false) items.push(data.courses[i]);
+  }
   if (items.length === 0) {
     list.innerHTML = '<div class="empty-state"><div class="empty-text">暂无课程</div></div>';
     return;
@@ -2747,6 +2789,7 @@ function renderEnrollPage(data, courseId) {
     if (data.courses[i].id === courseId) { c = data.courses[i]; break; }
   }
   if (!c) { showToast('课程不存在'); return; }
+  if (c.active === false) { showToast('该课程已取消，无法报名'); showPage('page-parent-course'); return; }
   enrollCourseDuration = c.duration || 90;
   header.innerHTML = '<div class="course-header">'
     + '<div class="course-header-name">' + esc(c.name) + '</div>'
@@ -2850,6 +2893,7 @@ function submitEnroll() {
     if (data.courses[i].id === pendingEnrollCourseId) { c = data.courses[i]; break; }
   }
   if (!c) { showToast('课程不存在'); return; }
+  if (c.active === false) { showToast('该课程已取消，无法报名'); return; }
   data.orders.push({
     id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
     courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
@@ -3325,12 +3369,14 @@ var actionRoutes = {
   closeAdminCourseModal: function() { closeAdminCourseModal(); },
   editAdminCourse: function(el) { editAdminCourse(el); },
   deleteAdminCourse: function(el) { deleteAdminCourse(el); },
+  restoreAdminCourse: function(el) { restoreAdminCourse(el); },
   filterAdminCourse: function() { filterAdminCourse(); },
   showTeacherCourseModal: function(el) { showTeacherCourseModal(el); },
   saveTeacherCourse: function() { saveTeacherCourse(); },
   closeTeacherCourseModal: function() { closeTeacherCourseModal(); },
   editTeacherCourse: function(el) { editTeacherCourse(el); },
   deleteTeacherCourse: function(el) { deleteTeacherCourse(el); },
+  restoreTeacherCourse: function(el) { restoreTeacherCourse(el); },
   openReceiptModal: function(el) { openReceiptModal(el); },
   closeReceiptModal: function() { closeReceiptModal(); },
   filterReceipt: function(el) { filterReceipt(el); },
