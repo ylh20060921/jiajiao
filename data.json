@@ -1,12 +1,5 @@
 {
-  "teachers": [
-    {
-      "id": "id_1779931602938_o6emmy",
-      "phone": "13925983000",
-      "name": "叶励宏",
-      "status": "approved"
-    }
-  ],
+  "teachers": [],
   "parents": [
     {
       "id": "id_1779932000309_cbktcr",
