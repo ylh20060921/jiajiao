@@ -30,7 +30,8 @@
       "duration": 150,
       "desc": "",
       "grade": "",
-      "subject": ""
+      "subject": "",
+      "active": false
     },
     {
       "id": "id_1779932065784_qyeg6z",
