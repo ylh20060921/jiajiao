@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>家教管理系统 - 加载器</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 90%;
+            text-align: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        .status {
+            background: #f5f5f5;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .status-line {
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 14px;
+        }
+        .success { color: #4CAF50; }
+        .error { color: #F44336; }
+        .loading { color: #FF9800; }
+        .btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: background 0.3s;
+            margin: 10px;
+        }
+        .btn:hover {
+            background: #5a67d8;
+        }
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .iframe-container {
+            margin-top: 30px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+            display: none;
+        }
+        iframe {
+            width: 100%;
+            height: 600px;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>家教管理系统</h1>
+        <p>正在加载最新版本...</p>
+        
+        <div class="status">
+            <div class="status-line" id="status1"><span class="loading">⏳</span> 正在从 GitHub 获取最新代码...</div>
+            <div class="status-line" id="status2"><span class="loading">⏳</span> 正在验证 Token 配置...</div>
+            <div class="status-line" id="status3"><span class="loading">⏳</span> 正在初始化云同步...</div>
+        </div>
+        
+        <button class="btn" id="loadBtn" onclick="loadApp()">加载应用</button>
+        <button class="btn" id="directBtn" onclick="openDirect()">直接访问（如果加载失败）</button>
+        
+        <div class="iframe-container" id="iframeContainer">
+            <iframe id="appFrame" sandbox="allow-same-origin allow-scripts allow-forms allow-popups"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const RAW_URL = 'https://raw.githubusercontent.com/ylh20060921/jiajiao/main/index.html';
+        const GITHUB_PAGES = 'https://ylh20060921.github.io/jiajiao/';
+        
+        function updateStatus(id, text, type = 'loading') {
+            const el = document.getElementById(id);
+            const icons = {
+                loading: '⏳',
+                success: '✅',
+                error: '❌'
+            };
+            el.innerHTML = `<span class="${type}">${icons[type]}</span> ${text}`;
+        }
+        
+        async function loadApp() {
+            document.getElementById('loadBtn').disabled = true;
+            updateStatus('status1', '正在从 GitHub 获取最新代码...', 'loading');
+            
+            try {
+                const response = await fetch(RAW_URL);
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const html = await response.text();
+                updateStatus('status1', '代码获取成功', 'success');
+                
+                // 验证关键函数
+                updateStatus('status2', '正在验证 Token 配置...', 'loading');
+                if (!html.includes('G_TOKEN_P1') || !html.includes('getGitHubToken')) {
+                    throw new Error('Token 配置不完整');
+                }
+                updateStatus('status2', 'Token 配置验证通过', 'success');
+                
+                updateStatus('status3', '正在初始化云同步...', 'loading');
+                if (!html.includes('uploadToGitHub') || !html.includes('downloadFromGitHub')) {
+                    throw new Error('同步模块缺失');
+                }
+                updateStatus('status3', '云同步模块就绪', 'success');
+                
+                // 创建 data URL 并加载到 iframe
+                const dataUrl = 'data:text/html;charset=utf-8,' + encodeURIComponent(html);
+                const iframe = document.getElementById('appFrame');
+                iframe.src = dataUrl;
+                document.getElementById('iframeContainer').style.display = 'block';
+                
+                // 滚动到 iframe
+                document.getElementById('iframeContainer').scrollIntoView({ behavior: 'smooth' });
+                
+            } catch (error) {
+                updateStatus('status1', `获取失败: ${error.message}`, 'error');
+                updateStatus('status2', '验证失败', 'error');
+                updateStatus('status3', '初始化失败', 'error');
+                document.getElementById('loadBtn').disabled = false;
+                alert('加载失败，请尝试直接访问或检查网络连接。');
+            }
+        }
+        
+        function openDirect() {
+            window.open(GITHUB_PAGES, '_blank');
+        }
+        
+        // 自动尝试加载
+        setTimeout(() => {
+            if (navigator.onLine) {
+                loadApp();
+            }
+        }, 500);
+    </script>
+</body>
+</html>
