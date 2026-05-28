@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v2.3</title>
+<title>家教管理助手 v2.4</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -163,6 +163,30 @@ a{text-decoration:none;color:inherit}
 .sch-row{margin-bottom:3px}
 .sch-price{color:#FF5252;font-weight:500;margin-left:8px}
 .sch-actions{display:flex;justify-content:flex-end;margin-top:8px;border-top:1px solid #F0F0F0;padding-top:8px}
+/* 排课日历 */
+.sch-calendar{background:#fff;border-radius:12px;padding:16px;margin-bottom:12px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.sch-cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.sch-month-title{font-size:16px;font-weight:700}
+.sch-month-nav span{color:#4A90D9;font-size:16px;font-weight:600}
+.sch-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:6px}
+.sch-weekday{font-size:12px;color:#999;padding:6px 0}
+.sch-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.sch-day{min-height:64px;border-radius:6px;padding:4px;font-size:12px;background:#FAFAFA;position:relative}
+.sch-day-empty{background:transparent}
+.sch-day-today{border:2px solid #4A90D9}
+.sch-day-num{font-weight:600;font-size:13px;margin-bottom:2px;color:#333}
+.sch-day-today .sch-day-num{color:#4A90D9}
+.sch-day-events{display:flex;flex-direction:column;gap:1px}
+.sch-event{background:#E3F2FD;border-radius:3px;padding:1px 4px;font-size:10px;line-height:1.3;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sch-event-time{color:#1976D2;margin-right:3px}
+.sch-event-course{color:#333}
+.sch-event-more{font-size:10px;color:#999;padding:1px 4px}
+.sch-today-detail{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,0.05)}
+.sch-today-title{font-size:15px;font-weight:700;color:#4A90D9;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #F0F0F0}
+.sch-today-item{display:flex;align-items:center;padding:10px 0;border-bottom:1px solid #F5F5F5}
+.sch-today-time{font-weight:600;font-size:14px;color:#333;min-width:120px}
+.sch-today-course{font-size:13px;color:#4A90D9;flex:1}
+.sch-today-parent{font-size:13px;color:#666}
 .parent-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px}
 .parent-name{font-size:15px;font-weight:600}
 .parent-student{font-size:12px;color:#666;margin-top:2px}
@@ -313,7 +337,7 @@ a{text-decoration:none;color:inherit}
 <div class="page active" id="page-login">
   <div class="login-page">
     <div class="login-header">
-      <div class="logo-text">家教管理助手 v2.3</div>
+      <div class="logo-text">家教管理助手 v2.4</div>
       <div class="sub-text">让每一堂课都有序进行</div>
     </div>
     <div class="role-selector">
@@ -837,7 +861,7 @@ a{text-decoration:none;color:inherit}
           <div style="font-size:11px;opacity:0.85">可选课程</div>
         </div>
         <div class="stat-item">
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v2.3</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v2.4</div>
           <div style="font-size:11px;opacity:0.85">版本</div>
         </div>
       </div>
@@ -1722,8 +1746,12 @@ function renderTeacherIndex(data) {
     for (var i = 0; i < data.orders.length; i++) {
       var o = data.orders[i];
       if (o.teacherId === currentUser.id && o.paid) {
-        var d = new Date(o.createTime);
-        if (d.getFullYear() === y && d.getMonth() === m) mIncome += (o.amount || 0);
+        var parts = (o.createTime || '').match(/(\d+)年(\d+)月(\d+)日/);
+        if (parts) {
+          var orderYear = parseInt(parts[1]);
+          var orderMonth = parseInt(parts[2]) - 1;
+          if (orderYear === y && orderMonth === m) mIncome += (o.amount || 0);
+        }
       }
     }
   }
@@ -1747,7 +1775,18 @@ function renderTodaySchedules(data) {
   if (data.schedules) {
     for (var i = 0; i < data.schedules.length; i++) {
       if (data.schedules[i].teacherId === currentUser.id && data.schedules[i].date === today) {
-        items.push(data.schedules[i]);
+        // 检查对应的订单是否已支付
+        var isPaid = false;
+        for (var j = 0; j < data.orders.length; j++) {
+          if (data.orders[j].teacherId === currentUser.id && 
+              data.orders[j].parentId === data.schedules[i].parentId &&
+              data.orders[j].courseId === data.schedules[i].courseId &&
+              data.orders[j].paid) {
+            isPaid = true;
+            break;
+          }
+        }
+        if (isPaid) items.push(data.schedules[i]);
       }
     }
   }
@@ -2155,7 +2194,20 @@ function renderTeacherSchedules(data) {
   var items = [];
   if (data.schedules) {
     for (var i = 0; i < data.schedules.length; i++) {
-      if (data.schedules[i].teacherId === currentUser.id) items.push(data.schedules[i]);
+      if (data.schedules[i].teacherId === currentUser.id) {
+        // 检查对应的订单是否已支付
+        var isPaid = false;
+        for (var j = 0; j < data.orders.length; j++) {
+          if (data.orders[j].teacherId === currentUser.id && 
+              data.orders[j].parentId === data.schedules[i].parentId &&
+              data.orders[j].courseId === data.schedules[i].courseId &&
+              data.orders[j].paid) {
+            isPaid = true;
+            break;
+          }
+        }
+        if (isPaid) items.push(data.schedules[i]);
+      }
     }
   }
   items.sort(function(a, b) {
@@ -2163,33 +2215,178 @@ function renderTeacherSchedules(data) {
     return (a.timeSlot || '').localeCompare(b.timeSlot || '');
   });
   if (items.length === 0) {
-    list.innerHTML = '<div class="empty-state"><div class="empty-text">暂无排课，请新增</div></div>';
+    list.innerHTML = '<div class="empty-state"><div class="empty-text">暂无已支付的排课记录</div></div>';
     return;
   }
-  var html = '';
-  var lastDate = '';
+  // 日历视图渲染
+  var now = new Date();
+  var year = now.getFullYear();
+  var month = now.getMonth();
+  // 计算当月有排课的日期集合
+  var schMap = {};
   for (var i = 0; i < items.length; i++) {
-    var s = items[i];
-    if (s.date !== lastDate) {
-      if (lastDate !== '') html += '</div>';
-      html += '<div class="list-header"><div class="list-title">' + s.date + '</div></div><div>';
-      lastDate = s.date;
-    }
-    var pName = getParentName(data, s.parentId);
-    var cName = getCourseName(data, s.courseId);
-    html += '<div class="card" style="margin-bottom:8px;padding:12px">'
-      + '<div class="sch-top"><span class="sch-date">' + (s.timeSlot || '-') + '</span>'
-      + '<span style="font-size:14px;font-weight:600;color:#FF5252">¥' + (s.price || 0) + '</span></div>'
-      + '<div class="sch-body">'
-      + '<div class="sch-row">家长：' + esc(pName) + '</div>'
-      + '<div class="sch-row">课程：' + esc(cName) + '</div>'
-      + '</div>'
-      + '<div class="sch-actions">'
-      + '<span class="action-link danger" data-action="deleteSchedule" data-action-param="' + s.id + '">删除</span>'
-      + '</div>'
-      + '</div>';
+    var d = items[i].date;
+    if (!schMap[d]) schMap[d] = [];
+    schMap[d].push(items[i]);
   }
-  if (lastDate !== '') html += '</div>';
+  var firstDay = new Date(year, month, 1);
+  var startDayOfWeek = firstDay.getDay(); // 0=周日
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var weekNames = ['日','一','二','三','四','五','六'];
+  var html = '<div class="sch-calendar">';
+  html += '<div class="sch-cal-header">';
+  html += '<div class="sch-month-title">' + year + '年' + (month + 1) + '月</div>';
+  html += '<div class="sch-month-nav">';
+  html += '<span style="cursor:pointer;margin-right:12px" data-action="schPrevMonth">◀</span>';
+  html += '<span style="cursor:pointer" data-action="schNextMonth">▶</span>';
+  html += '</div></div>';
+  // 星期头部
+  html += '<div class="sch-weekdays">';
+  for (var w = 0; w < 7; w++) {
+    html += '<div class="sch-weekday">' + weekNames[w] + '</div>';
+  }
+  html += '</div>';
+  // 日期格子
+  html += '<div class="sch-days">';
+  for (var b = 0; b < startDayOfWeek; b++) {
+    html += '<div class="sch-day sch-day-empty"></div>';
+  }
+  var today = formatDate(now);
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = year + '-' + pad2(month + 1) + '-' + pad2(d);
+    var isToday = (dateStr === today);
+    var hasSch = schMap[dateStr];
+    var cls = 'sch-day';
+    if (isToday) cls += ' sch-day-today';
+    if (hasSch) cls += ' sch-day-has';
+    html += '<div class="' + cls + '">';
+    html += '<div class="sch-day-num">' + d + '</div>';
+    if (hasSch) {
+      html += '<div class="sch-day-events">';
+      for (var e = 0; e < hasSch.length; e++) {
+        var s = hasSch[e];
+        var pName = getParentName(data, s.parentId);
+        var cName = getCourseName(data, s.courseId);
+        html += '<div class="sch-event" title="' + esc(pName) + ' - ' + esc(cName) + '">';
+        html += '<span class="sch-event-time">' + (s.timeSlot || '-') + '</span>';
+        html += '<span class="sch-event-course">' + esc(cName) + '</span>';
+        html += '</div>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div></div>';
+  // 当天详细排课列表
+  var todayItems = schMap[today] || [];
+  if (todayItems.length > 0) {
+    html += '<div class="sch-today-detail">';
+    html += '<div class="sch-today-title">今天排课</div>';
+    for (var i = 0; i < todayItems.length; i++) {
+      var s = todayItems[i];
+      var pName = getParentName(data, s.parentId);
+      var cName = getCourseName(data, s.courseId);
+      html += '<div class="sch-today-item">';
+      html += '<span class="sch-today-time">' + (s.timeSlot || '-') + '</span>';
+      html += '<span class="sch-today-course">' + esc(cName) + '</span>';
+      html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  list.innerHTML = html;
+}
+
+// 日历翻月——变量
+var schCalYear = new Date().getFullYear();
+var schCalMonth = new Date().getMonth();
+
+function renderSchCal(data, year, month) {
+  var list = document.getElementById('teacherScheduleList');
+  if (!list || !currentUser) return;
+  var items = [];
+  if (data.schedules) {
+    for (var i = 0; i < data.schedules.length; i++) {
+      if (data.schedules[i].teacherId === currentUser.id) {
+        var isPaid = false;
+        for (var j = 0; j < data.orders.length; j++) {
+          if (data.orders[j].teacherId === currentUser.id && 
+              data.orders[j].parentId === data.schedules[i].parentId &&
+              data.orders[j].courseId === data.schedules[i].courseId &&
+              data.orders[j].paid) {
+            isPaid = true;
+            break;
+          }
+        }
+        if (isPaid) items.push(data.schedules[i]);
+      }
+    }
+  }
+  var schMap = {};
+  for (var i = 0; i < items.length; i++) {
+    var d = items[i].date;
+    if (!schMap[d]) schMap[d] = [];
+    schMap[d].push(items[i]);
+  }
+  var firstDay = new Date(year, month, 1);
+  var startDayOfWeek = firstDay.getDay();
+  var daysInMonth = new Date(year, month + 1, 0).getDate();
+  var weekNames = ['日','一','二','三','四','五','六'];
+  var now = new Date();
+  var today = formatDate(now);
+  var html = '<div class="sch-calendar">';
+  html += '<div class="sch-cal-header">';
+  html += '<div class="sch-month-title">' + year + '年' + (month + 1) + '月</div>';
+  html += '<div class="sch-month-nav">';
+  html += '<span style="cursor:pointer;margin-right:12px" data-action="schPrevMonth">◀</span>';
+  html += '<span style="cursor:pointer" data-action="schNextMonth">▶</span>';
+  html += '</div></div>';
+  html += '<div class="sch-weekdays">';
+  for (var w = 0; w < 7; w++) html += '<div class="sch-weekday">' + weekNames[w] + '</div>';
+  html += '</div>';
+  html += '<div class="sch-days">';
+  for (var b = 0; b < startDayOfWeek; b++) html += '<div class="sch-day sch-day-empty"></div>';
+  for (var d = 1; d <= daysInMonth; d++) {
+    var dateStr = year + '-' + pad2(month + 1) + '-' + pad2(d);
+    var isToday = (dateStr === today);
+    var hasSch = schMap[dateStr];
+    var cls = 'sch-day';
+    if (isToday) cls += ' sch-day-today';
+    if (hasSch) cls += ' sch-day-has';
+    html += '<div class="' + cls + '">';
+    html += '<div class="sch-day-num">' + d + '</div>';
+    if (hasSch) {
+      html += '<div class="sch-day-events">';
+      for (var e = 0; e < hasSch.length && e < 3; e++) {
+        var s = hasSch[e];
+        var cName = getCourseName(data, s.courseId);
+        html += '<div class="sch-event">';
+        html += '<span class="sch-event-time">' + (s.timeSlot || '-') + '</span>';
+        html += '<span class="sch-event-course">' + esc(cName) + '</span>';
+        html += '</div>';
+      }
+      if (hasSch.length > 3) html += '<div class="sch-event-more">+' + (hasSch.length - 3) + '更多</div>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
+  html += '</div></div>';
+  var todayItems = schMap[today] || [];
+  if (todayItems.length > 0) {
+    html += '<div class="sch-today-detail">';
+    html += '<div class="sch-today-title">今天排课</div>';
+    for (var i = 0; i < todayItems.length; i++) {
+      var s = todayItems[i];
+      var pName = getParentName(data, s.parentId);
+      var cName = getCourseName(data, s.courseId);
+      html += '<div class="sch-today-item">';
+      html += '<span class="sch-today-time">' + (s.timeSlot || '-') + '</span>';
+      html += '<span class="sch-today-course">' + esc(cName) + '</span>';
+      html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+      html += '</div>';
+    }
+    html += '</div>';
+  }
   list.innerHTML = html;
 }
 
@@ -2341,6 +2538,7 @@ function toggleOrderPay(el) {
   renderTeacherOrders(data);
   renderTeacherIncomes(data);
   renderTeacherIndex(data);
+  renderTeacherSchedules(data);
 }
 
 function filterOrders(el) {
@@ -2608,9 +2806,30 @@ function updateEnrollTimeSlots() {
     var end = cur + dur;
     var h2 = Math.floor(end / 60), m2 = end % 60;
     var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
+    // 检查该时段是否已被同一老师在同一日期占用（通过已生成的排课检查）
+    var occupied = false;
+    if (data.schedules) {
+      for (var k = 0; k < data.schedules.length; k++) {
+        var sch = data.schedules[k];
+        if (sch.teacherId === course.teacherId && sch.date === date && sch.timeSlot === label) {
+          occupied = true;
+          break;
+        }
+      }
+    }
+    if (!occupied) {
+      var opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
+  // 如果所有时段都被占用，显示提示
+  if (sel.options.length === 0) {
     var opt = document.createElement('option');
-    opt.value = label;
-    opt.textContent = label;
+    opt.value = '';
+    opt.textContent = '该日期暂无可用时段';
+    opt.disabled = true;
     sel.appendChild(opt);
   }
 }
@@ -2645,6 +2864,8 @@ function submitEnroll() {
     if (data.parents[i].id === currentUser.id) {
       data.parents[i].studentName = studentName;
       data.parents[i].remark = remark;
+      data.parents[i].teacherId = c.teacherId;
+      data.parents[i].courseId = c.id;
       break;
     }
   }
@@ -3141,6 +3362,8 @@ var actionRoutes = {
   saveTeacherTime: function() { saveTeacherTime(); },
   updateEnrollTimeSlots: function() { updateEnrollTimeSlots(); },
   updateScheduleTimeOptions: function() { updateScheduleTimeOptions(); },
+  schPrevMonth: function() { schCalMonth--; if (schCalMonth < 0) { schCalMonth = 11; schCalYear--; } renderSchCal(loadData(), schCalYear, schCalMonth); },
+  schNextMonth: function() { schCalMonth++; if (schCalMonth > 11) { schCalMonth = 0; schCalYear++; } renderSchCal(loadData(), schCalYear, schCalMonth); },
   // 全自动同步无需手动操作
 };
 
@@ -3156,7 +3379,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '2.3'; // GitHub API 版本
+  var currentVersion = '2.4'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
