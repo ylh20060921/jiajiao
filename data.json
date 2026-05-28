@@ -4,7 +4,6 @@
       "id": "id_1779931602938_o6emmy",
       "phone": "13925983000",
       "name": "叶励宏",
-      "pwd": "123456",
       "status": "approved"
     }
   ],
@@ -13,7 +12,6 @@
       "id": "id_1779932000309_cbktcr",
       "phone": "13925983000",
       "name": "叶励宏",
-      "pwd": "123456",
       "studentName": "叶励宏",
       "grade": "",
       "courseId": "id_1779932065784_qyeg6z",
@@ -76,6 +74,5 @@
       "createTime": "2026年5月28日"
     }
   ],
-  "admins": [],
-  "adminPwd": "123456"
+  "admins": []
 }
