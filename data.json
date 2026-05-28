@@ -1,45 +1,6 @@
 {
-  "teachers": [
-    {
-      "id": "id_1779966691571_vq3738",
-      "phone": "13925983000",
-      "name": "叶励宏",
-      "pwd": "123456",
-      "status": "approved"
-    }
-  ],
-  "parents": [
-    {
-      "id": "id_1779967444384_8sow6b",
-      "phone": "17881954647",
-      "name": "test1234",
-      "pwd": "Nan",
-      "studentName": "abc",
-      "grade": "",
-      "courseId": "",
-      "remark": ""
-    },
-    {
-      "id": "id_1779968230608_0saaap",
-      "phone": "13678941234",
-      "name": "4456",
-      "pwd": "123456",
-      "studentName": "test333",
-      "grade": "",
-      "courseId": "",
-      "remark": ""
-    },
-    {
-      "id": "id_1779968338013_9zcxz0",
-      "phone": "13925983000",
-      "name": "叶励宏",
-      "pwd": "123456",
-      "studentName": "叶励宏",
-      "grade": "",
-      "courseId": "",
-      "remark": ""
-    }
-  ],
+  "teachers": [],
+  "parents": [],
   "courses": [
     {
       "id": "id_1779932049758_94b9e8",
@@ -67,5 +28,5 @@
   "schedules": [],
   "orders": [],
   "admins": [],
-  "adminPwd": "123456"
+  "adminPwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
 }
