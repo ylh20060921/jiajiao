@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v2.4</title>
+<title>家教管理助手 v2.5</title>
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.6;color:#333;background:#F5F6FA}
@@ -337,7 +337,7 @@ a{text-decoration:none;color:inherit}
 <div class="page active" id="page-login">
   <div class="login-page">
     <div class="login-header">
-      <div class="logo-text">家教管理助手 v2.4</div>
+      <div class="logo-text">家教管理助手 v2.5</div>
       <div class="sub-text">让每一堂课都有序进行</div>
     </div>
     <div class="role-selector">
@@ -2471,11 +2471,67 @@ function updateScheduleTimeOptions() {
   var sel = document.getElementById('schTimeSlot');
   if (!sel || !date) return;
   sel.innerHTML = '';
-  var times = ['08:00-09:30','10:00-11:30','14:00-15:30','16:00-17:30','19:00-20:30'];
-  for (var i = 0; i < times.length; i++) {
+  var data = loadData();
+  
+  // 读取教师的上课时间设置（小时），默认 8:00-20:00
+  var teacher = null;
+  for (var i = 0; i < data.teachers.length; i++) {
+    if (data.teachers[i].id === currentUser.id) { teacher = data.teachers[i]; break; }
+  }
+  var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
+  var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
+  
+  // 收集该教师在该日期已有的排课时间段
+  var occupiedSlots = [];
+  if (data.schedules) {
+    for (var k = 0; k < data.schedules.length; k++) {
+      var sch = data.schedules[k];
+      if (sch.teacherId === currentUser.id && sch.date === date && sch.timeSlot) {
+        var parts = sch.timeSlot.split('-');
+        if (parts.length === 2) {
+          var startParts = parts[0].split(':');
+          var endParts = parts[1].split(':');
+          if (startParts.length === 2 && endParts.length === 2) {
+            var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            var endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            occupiedSlots.push({start: startMin, end: endMin});
+          }
+        }
+      }
+    }
+  }
+  
+  // 每 30 分钟步进生成可选开始时间（默认90分钟一节课）
+  var dur = 90;
+  for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
+    var end = cur + dur;
+    if (end > teacherEndMin) continue;
+    var h1 = Math.floor(cur / 60), m1 = cur % 60;
+    var h2 = Math.floor(end / 60), m2 = end % 60;
+    var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
+    
+    var conflict = false;
+    for (var k = 0; k < occupiedSlots.length; k++) {
+      var slot = occupiedSlots[k];
+      if (cur < slot.end && end > slot.start) {
+        conflict = true;
+        break;
+      }
+    }
+    
+    if (!conflict) {
+      var opt = document.createElement('option');
+      opt.value = label;
+      opt.textContent = label;
+      sel.appendChild(opt);
+    }
+  }
+  
+  if (sel.options.length === 0) {
     var opt = document.createElement('option');
-    opt.value = times[i];
-    opt.textContent = times[i];
+    opt.value = '';
+    opt.textContent = '该日期暂无可用时段';
+    opt.disabled = true;
     sel.appendChild(opt);
   }
 }
@@ -2491,6 +2547,40 @@ function saveSchedule() {
     if (data.parents[i].id === parentId) { p = data.parents[i]; break; }
   }
   if (!p) { showToast('家长不存在'); return; }
+  
+  // 检查时间冲突
+  var parts = timeSlot.split('-');
+  if (parts.length !== 2) { showToast('时间格式错误'); return; }
+  var startParts = parts[0].split(':');
+  var endParts = parts[1].split(':');
+  if (startParts.length !== 2 || endParts.length !== 2) { showToast('时间格式错误'); return; }
+  
+  var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+  var endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+  
+  // 检查该教师在该日期是否已有冲突排课
+  if (data.schedules) {
+    for (var k = 0; k < data.schedules.length; k++) {
+      var sch = data.schedules[k];
+      if (sch.teacherId === currentUser.id && sch.date === date && sch.timeSlot) {
+        var schParts = sch.timeSlot.split('-');
+        if (schParts.length === 2) {
+          var schStartParts = schParts[0].split(':');
+          var schEndParts = schParts[1].split(':');
+          if (schStartParts.length === 2 && schEndParts.length === 2) {
+            var schStartMin = parseInt(schStartParts[0]) * 60 + parseInt(schStartParts[1]);
+            var schEndMin = parseInt(schEndParts[0]) * 60 + parseInt(schEndParts[1]);
+            // 时间段重叠判断
+            if (startMin < schEndMin && endMin > schStartMin) {
+              showToast('该时段已有排课，请选择其他时间');
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+  
   var courseId = p.courseId;
   var price = 0;
   if (courseId) {
@@ -2852,24 +2942,50 @@ function updateEnrollTimeSlots() {
   var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
   var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
   
+  // 收集该教师在该日期已有的排课时间段
+  var occupiedSlots = [];
+  if (data.schedules) {
+    for (var k = 0; k < data.schedules.length; k++) {
+      var sch = data.schedules[k];
+      if (sch.teacherId === course.teacherId && sch.date === date && sch.timeSlot) {
+        // 解析时间段：如 "10:00-11:30" -> ["10:00", "11:30"]
+        var parts = sch.timeSlot.split('-');
+        if (parts.length === 2) {
+          var startParts = parts[0].split(':');
+          var endParts = parts[1].split(':');
+          if (startParts.length === 2 && endParts.length === 2) {
+            var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+            var endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+            occupiedSlots.push({start: startMin, end: endMin});
+          }
+        }
+      }
+    }
+  }
+  
   // 每 30 分钟步进生成可选开始时间
   for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
     var h1 = Math.floor(cur / 60), m1 = cur % 60;
     var end = cur + dur;
     var h2 = Math.floor(end / 60), m2 = end % 60;
+    
+    // 检查是否超出教师可上课时间
+    if (end > teacherEndMin) continue;
+    
     var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
-    // 检查该时段是否已被同一老师在同一日期占用（通过已生成的排课检查）
-    var occupied = false;
-    if (data.schedules) {
-      for (var k = 0; k < data.schedules.length; k++) {
-        var sch = data.schedules[k];
-        if (sch.teacherId === course.teacherId && sch.date === date && sch.timeSlot === label) {
-          occupied = true;
-          break;
-        }
+    
+    // 检查该时段是否与已有排课冲突（考虑时间段重叠）
+    var conflict = false;
+    for (var k = 0; k < occupiedSlots.length; k++) {
+      var slot = occupiedSlots[k];
+      // 时间段重叠判断：新课程开始时间 < 已有课程结束时间 且 新课程结束时间 > 已有课程开始时间
+      if (cur < slot.end && end > slot.start) {
+        conflict = true;
+        break;
       }
     }
-    if (!occupied) {
+    
+    if (!conflict) {
       var opt = document.createElement('option');
       opt.value = label;
       opt.textContent = label;
@@ -2902,6 +3018,40 @@ function submitEnroll() {
     if (data.courses[i].id === pendingEnrollCourseId) { c = data.courses[i]; break; }
   }
   if (!c) { showToast('课程不存在'); return; }
+  
+  // 检查时间冲突
+  var parts = timeSlot.split('-');
+  if (parts.length !== 2) { showToast('时间格式错误'); return; }
+  var startParts = parts[0].split(':');
+  var endParts = parts[1].split(':');
+  if (startParts.length !== 2 || endParts.length !== 2) { showToast('时间格式错误'); return; }
+  
+  var startMin = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+  var endMin = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+  
+  // 检查该教师在该日期是否已有冲突排课
+  if (data.schedules) {
+    for (var k = 0; k < data.schedules.length; k++) {
+      var sch = data.schedules[k];
+      if (sch.teacherId === c.teacherId && sch.date === date && sch.timeSlot) {
+        var schParts = sch.timeSlot.split('-');
+        if (schParts.length === 2) {
+          var schStartParts = schParts[0].split(':');
+          var schEndParts = schParts[1].split(':');
+          if (schStartParts.length === 2 && schEndParts.length === 2) {
+            var schStartMin = parseInt(schStartParts[0]) * 60 + parseInt(schStartParts[1]);
+            var schEndMin = parseInt(schEndParts[0]) * 60 + parseInt(schEndParts[1]);
+            // 时间段重叠判断
+            if (startMin < schEndMin && endMin > schStartMin) {
+              showToast('该时段已有排课，请选择其他时间');
+              return;
+            }
+          }
+        }
+      }
+    }
+  }
+  
   data.orders.push({
     id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
     courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
@@ -3431,7 +3581,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '2.4'; // GitHub API 版本
+  var currentVersion = '2.5'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
