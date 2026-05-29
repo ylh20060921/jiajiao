@@ -8,13 +8,15 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v4.1</title>
+<title>家教管理助手 v4.2</title>
 
 <style>
 
-/* ===== 暗黑科技风 v4.1 ===== */
+/* ===== 暗黑科技风 v4.2（深色默认）===== */
 
 :root {
+
+  /* 深色主题（默认） */
 
   --bg: #09090B;
 
@@ -50,6 +52,8 @@
 
   --gradient-cyan-purple: linear-gradient(90deg, #00E5F0, #7C3AED, #E040FB);
 
+  /* 主题无关共用 */
+
   --radius-lg: 24px;
 
   --radius-md: 16px;
@@ -67,6 +71,50 @@
   --transition-fast: 0.15s var(--ease-out);
 
   --transition-normal: 0.25s var(--ease-out);
+
+}
+
+
+
+/* ===== 浅色主题 v4.2 ===== */
+
+[data-theme="light"] {
+
+  --bg: #F5F5F7;
+
+  --bg-card: rgba(255,255,255,0.88);
+
+  --bg-card-hover: rgba(255,255,255,0.94);
+
+  --bg-input: rgba(0,0,0,0.035);
+
+  --border: rgba(0,0,0,0.08);
+
+  --border-focus: rgba(0,140,220,0.4);
+
+  --text-primary: #1C1C22;
+
+  --text-secondary: #585862;
+
+  --text-muted: #9E9EA8;
+
+  --accent-cyan: #0088B8;
+
+  --accent-purple: #6D28D9;
+
+  --accent-pink: #C026D3;
+
+  --accent-blue: #2563EB;
+
+  --gradient-primary: linear-gradient(135deg, #6D28D9, #2563EB);
+
+  --gradient-danger: linear-gradient(135deg, #E53935, #C62828);
+
+  --gradient-success: linear-gradient(135deg, #059669, #10B981);
+
+  --gradient-cyan-purple: linear-gradient(90deg, #0088B8, #6D28D9, #C026D3);
+
+  --glass-blur: blur(12px);
 
 }
 
@@ -98,6 +146,14 @@ body::before {
 
   pointer-events: none;
 
+  transition: background-image 0.4s;
+
+}
+
+[data-theme="light"] body::before {
+
+  background-image: radial-gradient(circle, rgba(0,0,0,0.04) 1px, transparent 1px);
+
 }
 
 
@@ -124,6 +180,16 @@ body::after {
 
   animation: gradientShift 15s var(--ease-in-out) infinite alternate;
 
+  transition: background 0.4s;
+
+}
+
+[data-theme="light"] body::after {
+
+  background: linear-gradient(90deg, rgba(0,140,220,0.05), rgba(109,40,217,0.08), rgba(192,38,211,0.04));
+
+  filter: blur(140px);
+
 }
 
 @keyframes gradientShift {
@@ -148,9 +214,13 @@ a{text-decoration:none;color:inherit}
 
 ::-webkit-scrollbar-track{background:transparent}
 
-::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.12);border-radius:3px;transition:background 0.3s}
 
 ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.2)}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12)}
+
+[data-theme="light"] ::-webkit-scrollbar-thumb:hover{background:rgba(0,0,0,0.22)}
 
 
 
@@ -1876,11 +1946,117 @@ a{text-decoration:none;color:inherit}
 
 .conflict-item{padding:8px 0;border-bottom:1px solid var(--border);font-size:13px;color:var(--text-secondary)}
 
+
+
+/* ===== 主题切换按钮 ===== */
+
+.theme-toggle{
+
+  position:fixed;
+
+  top:12px;right:12px;
+
+  z-index:9999;
+
+  width:36px;height:36px;
+
+  border-radius:50%;
+
+  background:var(--bg-card);
+
+  border:1px solid var(--border);
+
+  backdrop-filter:var(--glass-blur);
+
+  color:var(--text-primary);
+
+  font-size:16px;
+
+  display:flex;align-items:center;justify-content:center;
+
+  cursor:pointer;
+
+  box-shadow:0 2px 10px rgba(0,0,0,0.15);
+
+  transition:all var(--transition-normal);
+
+  line-height:1;
+
+}
+
+.theme-toggle:hover{transform:scale(1.08);box-shadow:0 4px 16px rgba(0,0,0,0.2)}
+
+.theme-toggle:active{transform:scale(0.95)}
+
+
+
+/* ===== 浅色主题额外覆盖 v4.2 ===== */
+
+[data-theme="light"] .login-form,
+
+[data-theme="light"] .login-card {
+
+  box-shadow: 0 8px 32px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.8);
+
+}
+
+[data-theme="light"] .login-form:hover,
+
+[data-theme="light"] .login-card:hover {
+
+  box-shadow: 0 12px 40px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.9);
+
+}
+
+[data-theme="light"] .card:hover {
+
+  box-shadow: 0 6px 24px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.7);
+
+}
+
+[data-theme="light"] .modal-content {
+
+  box-shadow: 0 16px 48px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.8);
+
+}
+
+[data-theme="light"] .bottom-nav {
+
+  background: rgba(255,255,255,0.92);
+
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.06);
+
+}
+
+[data-theme="light"] .toast {
+
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+
+}
+
+[data-theme="light"] .theme-toggle {
+
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+
+}
+
+[data-theme="light"] .theme-toggle:hover {
+
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+
+}
+
 </style>
 
 </head>
 
 <body>
+
+
+
+<!-- 主题切换按钮 -->
+
+<button class="theme-toggle" id="themeToggle" title="切换深浅色主题">🌙</button>
 
 
 
@@ -1978,7 +2154,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v4.1</div>
+      <div class="logo-text">家教管理助手 v4.2</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -3026,7 +3202,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.1</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.2</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -8367,6 +8543,66 @@ function init() {
 
 
 init();
+
+</script>
+
+
+
+<script>
+
+/* ===== 主题切换 v4.2 ===== */
+
+(function(){
+
+  var STORAGE_KEY = 'jiajiao_theme';
+
+  var toggle = document.getElementById('themeToggle');
+
+  // 读取保存的主题
+
+  var saved = localStorage.getItem(STORAGE_KEY);
+
+  if (saved === 'light') {
+
+      document.documentElement.setAttribute('data-theme', 'light');
+
+      if (toggle) toggle.textContent = '☀️';
+
+  }
+
+  // 点击切换
+
+  if (toggle) {
+
+    toggle.addEventListener('click', function(){
+
+      var el = document.documentElement;
+
+      var current = el.getAttribute('data-theme');
+
+      if (current === 'light') {
+
+        el.removeAttribute('data-theme');
+
+        localStorage.setItem(STORAGE_KEY, 'dark');
+
+        toggle.textContent = '🌙';
+
+      } else {
+
+        el.setAttribute('data-theme', 'light');
+
+        localStorage.setItem(STORAGE_KEY, 'light');
+
+        toggle.textContent = '☀️';
+
+      }
+
+    });
+
+  }
+
+})();
 
 </script>
 
