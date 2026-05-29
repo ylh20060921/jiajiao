@@ -6782,37 +6782,51 @@ function submitEnroll() {
 
   if (!c) { showToast('课程不存在或已下架'); return; }
 
-  // 日期 × 时段 双循环，每个组合独立创建订单/排课
-
-  var totalFee = selectedDates.length * selectedSlots.length * c.price;
+  // 日期 × 时段 双循环，跳过已占用组合，每个有效组合独立创建订单/排课
+  var totalFee = 0;
+  var createdCount = 0;
+  var skippedCount = 0;
 
   for (var di = 0; di < selectedDates.length; di++) {
-
     for (var si = 0; si < selectedSlots.length; si++) {
-
+      // 检查该日期+时段是否已被该教师占用
+      var occupied = false;
+      if (data.schedules) {
+        for (var k = 0; k < data.schedules.length; k++) {
+          var sch = data.schedules[k];
+          if (sch.teacherId === c.teacherId && sch.date === selectedDates[di] && sch.timeSlot === selectedSlots[si]) {
+            occupied = true;
+            break;
+          }
+        }
+      }
+      if (occupied) {
+        skippedCount++;
+        continue;
+      }
+      totalFee += c.price;
+      createdCount++;
       data.orders.push({
-
         id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-
         courseId: c.id, amount: c.price, paid: false, teacherConfirmed: true,
-
         createTime: formatDate(new Date())
-
       });
-
       data.schedules.push({
-
         id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-
         courseId: c.id, date: selectedDates[di], timeSlot: selectedSlots[si],
-
         price: c.price, createTime: new Date().toISOString()
-
       });
-
     }
-
   }
+
+  if (createdCount === 0) {
+    showToast('所选日期×时段组合均已占用，请重新选择');
+    return;
+  }
+
+  var msg = '报名成功！共创建' + createdCount + '条排课';
+  if (skippedCount > 0) msg += '，跳过' + skippedCount + '条冲突';
+  msg += '，合计¥' + totalFee;
 
   currentUser.studentName = studentName;
 
@@ -6836,7 +6850,7 @@ function submitEnroll() {
 
   saveData(data);
 
-  showToastSuccess('报名成功！共' + selectedDates.length + '天×' + selectedSlots.length + '时段，合计¥' + totalFee);
+  showToastSuccess(msg);
 
   showPage('page-parent-course');
 
@@ -6932,37 +6946,11 @@ function generateTimeGrid(data, course) {
 
     var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
 
-    // 检查该时段是否已被同一老师占用（任意日期）
-
-    var occupied = false;
-
-    if (data.schedules) {
-
-      for (var k = 0; k < data.schedules.length; k++) {
-
-        var sch = data.schedules[k];
-
-        if (sch.teacherId === course.teacherId && sch.timeSlot === label) {
-
-          occupied = true;
-
-          break;
-
-        }
-
-      }
-
-    }
-
-    if (!occupied) {
-
-      grid.innerHTML += '<div class="time-slot-check" data-slot="' + label + '" onclick="toggleTimeSlot(this)">' + label + '</div>';
-
-    }
+    grid.innerHTML += '<div class="time-slot-check" data-slot="' + label + '" onclick="toggleTimeSlot(this)">' + label + '</div>';
 
   }
 
-  if (!grid.innerHTML) {
+  if (!grid.innerHTML.trim()) {
 
     grid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px">暂无可用时段</div>';
 
