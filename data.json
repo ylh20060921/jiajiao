@@ -4,7 +4,7 @@
       "id": "id_1779969496895_5cv4hh",
       "phone": "13925983000",
       "name": "叶励宏",
-      "pwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "pwd": "123456",
       "status": "approved"
     }
   ],
@@ -13,7 +13,7 @@
       "id": "id_1779969423381_psr4ft",
       "phone": "17881954647",
       "name": "ywy",
-      "pwd": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+      "pwd": "123456",
       "studentName": "qwe",
       "grade": "",
       "courseId": "id_1779972027738_bwkpna",
@@ -24,7 +24,7 @@
       "id": "id_1779969596310_i3qs0s",
       "phone": "13925983000",
       "name": "叶励宏",
-      "pwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "pwd": "123456",
       "studentName": "叶励宏",
       "grade": "",
       "courseId": "",
@@ -34,7 +34,7 @@
       "id": "id_1779969872158_e1vi20",
       "phone": "17881954746",
       "name": "❤️123",
-      "pwd": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
+      "pwd": "123456",
       "studentName": "name",
       "grade": "",
       "courseId": "",
@@ -44,7 +44,7 @@
       "id": "id_1779970626752_m2b96c",
       "phone": "19859326526",
       "name": "钟锦航",
-      "pwd": "0a0667865bc17f9d624bcf11088057bbab46336e7dae65f3d5366f4f7a18333e",
+      "pwd": "123456",
       "studentName": "abc",
       "grade": "",
       "courseId": "",
@@ -54,7 +54,7 @@
       "id": "id_1779971575279_3wdbyr",
       "phone": "13245677895",
       "name": "qwe",
-      "pwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92",
+      "pwd": "123456",
       "studentName": "qwer",
       "grade": "",
       "courseId": "",
@@ -798,5 +798,5 @@
     }
   ],
   "admins": [],
-  "adminPwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
+  "adminPwd": "123456"
 }
