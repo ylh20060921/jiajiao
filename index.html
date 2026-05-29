@@ -8,7 +8,7 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v3.8</title>
+<title>家教管理助手 v4.0</title>
 
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -338,6 +338,7 @@ a{text-decoration:none;color:inherit}
 .time-slot-check:hover{border-color:#6366F1;background:#EEF4FF}
 .time-slot-check.selected{border-color:#6366F1;background:#EEF2FF;color:#4338CA;font-weight:600}
 .time-slot-check input{display:none}
+.date-slot-check{display:inline-flex;align-items:center;padding:7px 14px;margin:4px 6px 4px 0;border:1.5px solid #E2E8F0;border-radius:10px;font-size:13px;cursor:pointer;transition:all .15s ease;user-select:none;background:#F8FAFC;color:#64748B}.date-slot-check input{display:none}.date-slot-check.selected{background:#EEF2FF;border-color:#6366F1;color:#6366F1;font-weight:600}.date-slot-check.weekend{background:#FFF5F5;border-color:#FECDD3;color:#F43F5E}.date-slot-check.weekend.selected{background:#FEF2F2;border-color:#EF4444;color:#DC2626}
 </style>
 
 </head>
@@ -440,7 +441,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v3.8</div>
+      <div class="logo-text">家教管理助手 v4.0</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -1451,7 +1452,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v3.8</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.0</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -1585,7 +1586,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="form-label">上课日期</div>
 
-        <input class="form-input" type="date" id="enrollDate" data-action="updateEnrollTimeSlots" />
+        <div id="enrollDateGroup" class="time-slot-group" style="max-height:180px;overflow-y:auto"></div>
 
       </div>
 
@@ -3515,7 +3516,7 @@ function renderTodaySchedules(data) {
 
               data.orders[j].courseId === data.schedules[i].courseId &&
 
-              data.orders[j].paid) {
+              data.orders[j].paid && data.orders[j].teacherConfirmed !== false) {
 
             isPaid = true;
 
@@ -4203,7 +4204,7 @@ function renderTeacherSchedules(data) {
 
               data.orders[j].courseId === data.schedules[i].courseId &&
 
-              data.orders[j].paid) {
+              data.orders[j].paid && data.orders[j].teacherConfirmed !== false) {
 
             isPaid = true;
 
@@ -4333,9 +4334,15 @@ function renderTeacherSchedules(data) {
 
         var pName = getParentName(data, s.parentId);
 
+        var pPhone2 = getParentPhone(data, s.parentId);
+
         var cName = getCourseName(data, s.courseId);
 
-        html += '<div class="sch-event" title="' + esc(pName) + ' - ' + esc(cName) + '">';
+        var evtTitle = esc(pName) + ' - ' + esc(cName);
+
+        if (pPhone2) evtTitle += ' (' + esc(pPhone2) + ')';
+
+        html += '<div class="sch-event" title="' + evtTitle + '">';
 
         html += '<span class="sch-event-time">' + (s.timeSlot || '-') + '</span>';
 
@@ -4380,6 +4387,14 @@ function renderTeacherSchedules(data) {
       html += '<span class="sch-today-course">' + esc(cName) + '</span>';
 
       html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+
+      var pPhone = getParentPhone(data, s.parentId);
+
+      if (pPhone) {
+
+        html += '<span class="sch-today-phone">' + esc(pPhone) + '</span>';
+
+      }
 
       html += '</div>';
 
@@ -4427,7 +4442,7 @@ function renderSchCal(data, year, month) {
 
               data.orders[j].courseId === data.schedules[i].courseId &&
 
-              data.orders[j].paid) {
+              data.orders[j].paid && data.orders[j].teacherConfirmed !== false) {
 
             isPaid = true;
 
@@ -4566,6 +4581,14 @@ function renderSchCal(data, year, month) {
       html += '<span class="sch-today-course">' + esc(cName) + '</span>';
 
       html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+
+      var pPhone = getParentPhone(data, s.parentId);
+
+      if (pPhone) {
+
+        html += '<span class="sch-today-phone">' + esc(pPhone) + '</span>';
+
+      }
 
       html += '</div>';
 
@@ -5343,9 +5366,25 @@ function renderEnrollPage(data, courseId) {
 
   pendingEnrollCourseId = courseId;
 
-  var dateInput = document.getElementById('enrollDate');
-
-  if (dateInput) dateInput.value = '';
+  // Generate date multi-select (next 30 days)
+  var dateGroup = document.getElementById('enrollDateGroup');
+  if (dateGroup) {
+    var now = new Date();
+    var dateHtml = '';
+    for (var d = 0; d < 30; d++) {
+      var dt = new Date(now);
+      dt.setDate(dt.getDate() + d);
+      var ds = formatDate(dt);
+      var dayOfWeek = dt.getDay();
+      var isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
+      var cls = 'date-slot-check' + (isWeekend ? ' weekend' : '');
+      dateHtml += '<label class="' + cls + '" onclick="toggleDateSlot(this)" data-date="' + ds + '">';
+      dateHtml += '<input type="checkbox" value="' + ds + '">';
+      dateHtml += ds.substring(5) + ' ' + ['周日','周一','周二','周三','周四','周五','周六'][dayOfWeek];
+      dateHtml += '</label>';
+    }
+    dateGroup.innerHTML = dateHtml;
+  }
 
   var timeSlotGroup = document.getElementById('enrollTimeSlotGroup');
 
@@ -5373,11 +5412,22 @@ function goEnroll(el) {
 
 function updateEnrollTimeSlots() {
 
-  var date = document.getElementById('enrollDate').value;
-
+  // Get selected dates
+  var selectedDates = [];
+  var dateChecks = document.querySelectorAll('#enrollDateGroup .date-slot-check.selected');
+  for (var d = 0; d < dateChecks.length; d++) {
+    selectedDates.push(dateChecks[d].getAttribute('data-date'));
+  }
+  
   var group = document.getElementById('enrollTimeSlotGroup');
 
-  if (!group || !date) return;
+  if (!group || selectedDates.length === 0) {
+
+    if (group) group.innerHTML = '<span style="color:#94A3B8;font-size:13px">请先选择日期</span>';
+
+    return;
+
+  }
 
   group.innerHTML = '';
 
@@ -5425,24 +5475,19 @@ function updateEnrollTimeSlots() {
 
     var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
 
+    // Check if this slot is occupied on ANY selected date
     var occupied = false;
-
     if (data.schedules) {
-
-      for (var k = 0; k < data.schedules.length; k++) {
-
-        var sch = data.schedules[k];
-
-        if (sch.teacherId === course.teacherId && sch.date === date && sch.timeSlot === label) {
-
-          occupied = true;
-
-          break;
-
+      for (var sd = 0; sd < selectedDates.length; sd++) {
+        for (var k = 0; k < data.schedules.length; k++) {
+          var sch = data.schedules[k];
+          if (sch.teacherId === course.teacherId && sch.date === selectedDates[sd] && sch.timeSlot === label) {
+            occupied = true;
+            break;
+          }
         }
-
+        if (occupied) break;
       }
-
     }
 
     if (!occupied) {
@@ -5452,6 +5497,8 @@ function updateEnrollTimeSlots() {
       var lbl = document.createElement('label');
 
       lbl.className = 'time-slot-check';
+
+      lbl.setAttribute('data-time', label);
 
       lbl.onclick = function() { toggleTimeSlot(this); };
 
@@ -5483,7 +5530,21 @@ function toggleTimeSlot(el) {
 
   el.classList.toggle('selected', cb.checked);
 
+  updateEnrollTimeSlotConflict();
+
   updateEnrollFeeTotal();
+
+}
+
+function toggleDateSlot(el) {
+
+  var cb = el.querySelector('input');
+
+  cb.checked = !cb.checked;
+
+  el.classList.toggle('selected', cb.checked);
+
+  updateEnrollTimeSlots();
 
 }
 
@@ -5492,6 +5553,10 @@ function toggleTimeSlot(el) {
 function updateEnrollFeeTotal() {
 
   var checked = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check.selected');
+
+  // Also count selected dates
+  var dateChecks = document.querySelectorAll('#enrollDateGroup .date-slot-check.selected');
+  var dateCount = dateChecks.length || 1;
 
   var price = 0;
 
@@ -5503,8 +5568,74 @@ function updateEnrollFeeTotal() {
 
   }
 
-  document.getElementById('feeTotal').textContent = '¥' + (checked.length * price);
+  document.getElementById('feeTotal').textContent = '¥' + (checked.length * dateCount * price);
 
+}
+
+function parseTimeRange(label) {
+
+  var parts = label.split('-');
+
+  if (parts.length !== 2) return null;
+
+  var p0 = parts[0].split(':'), p1 = parts[1].split(':');
+
+  return {
+
+    start: parseInt(p0[0]) * 60 + parseInt(p0[1]),
+
+    end: parseInt(p1[0]) * 60 + parseInt(p1[1])
+
+  };
+
+}
+
+function timeRangesOverlap(a, b) {
+
+  return a.start < b.end && b.start < a.end;
+
+}
+
+function updateEnrollTimeSlotConflict() {
+
+  // Get all selected time slots
+  var selected = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check.selected');
+  var selectedRanges = [];
+  for (var i = 0; i < selected.length; i++) {
+    var label = selected[i].getAttribute('data-time') || selected[i].querySelector('input').value;
+    var r = parseTimeRange(label);
+    if (r) selectedRanges.push(r);
+  }
+
+  // Check all time slot checkboxes for overlap
+  var allSlots = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check');
+  for (var i = 0; i < allSlots.length; i++) {
+    var slot = allSlots[i];
+    if (slot.classList.contains('selected')) {
+      slot.classList.remove('conflict');
+      continue;
+    }
+    var label = slot.getAttribute('data-time') || slot.querySelector('input').value;
+    var r = parseTimeRange(label);
+    var hasConflict = false;
+    if (r) {
+      for (var j = 0; j < selectedRanges.length; j++) {
+        if (timeRangesOverlap(r, selectedRanges[j])) {
+          hasConflict = true;
+          break;
+        }
+      }
+    }
+    if (hasConflict) {
+      slot.classList.add('conflict');
+      slot.style.pointerEvents = 'none';
+      slot.style.opacity = '.35';
+    } else {
+      slot.classList.remove('conflict');
+      slot.style.pointerEvents = '';
+      slot.style.opacity = '';
+    }
+  }
 }
 
 
@@ -5519,7 +5650,7 @@ function pad2(n) {
 
 function submitEnroll() {
 
-  var date = document.getElementById('enrollDate').value;
+  var selectedDateEls = document.querySelectorAll('#enrollDateGroup .date-slot-check.selected');
 
   var checkedEls = document.querySelectorAll('#enrollTimeSlotGroup .time-slot-check.selected');
 
@@ -5527,7 +5658,7 @@ function submitEnroll() {
 
   var remark = document.getElementById('enrollRemark').value.trim();
 
-  if (!date || checkedEls.length === 0 || !studentName) { showToast('请填写完整信息'); return; }
+  if (selectedDateEls.length === 0 || checkedEls.length === 0 || !studentName) { showToast('请填写完整信息'); return; }
 
   var data = loadData();
 
@@ -5543,33 +5674,74 @@ function submitEnroll() {
 
   if (c.active === false) { showToast('该课程已取消，无法报名'); return; }
 
-  // 为每个选中的时段创建订单和排课记录，独立冲突检测
+  // 收集所有选中的日期
+
+  var dates = [];
+
+  for (var d = 0; d < selectedDateEls.length; d++) {
+
+    dates.push(selectedDateEls[d].getAttribute('data-date'));
+
+  }
+
+  // 为每个选中的日期x时段组合创建订单和排课记录
+
   var slots = [];
-  for (var i = 0; i < checkedEls.length; i++) {
-    var slot = checkedEls[i].querySelector('input').value;
-    // 冲突检测
-    var conflict = false;
-    if (data.schedules) {
-      for (var k = 0; k < data.schedules.length; k++) {
-        var sch = data.schedules[k];
-        if (sch.teacherId === c.teacherId && sch.date === date && sch.timeSlot === slot) {
-          conflict = true;
-          break;
+
+  for (var di = 0; di < dates.length; di++) {
+
+    var date = dates[di];
+
+    for (var i = 0; i < checkedEls.length; i++) {
+
+      var slot = checkedEls[i].getAttribute('data-time') || checkedEls[i].querySelector('input').value;
+
+      var conflict = false;
+
+      if (data.schedules) {
+
+        for (var k = 0; k < data.schedules.length; k++) {
+
+          var sch = data.schedules[k];
+
+          if (sch.teacherId === c.teacherId && sch.date === date && sch.timeSlot === slot) {
+
+            conflict = true;
+
+            break;
+
+          }
+
         }
+
       }
+
+      if (!conflict) {
+
+        slots.push(date + ' ' + slot);
+
+        data.orders.push({
+
+          id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+
+          courseId: c.id, amount: c.price, paid: false, teacherConfirmed: true, createTime: formatDate(new Date())
+
+        });
+
+        data.schedules.push({
+
+          id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+
+          courseId: c.id, date: date, timeSlot: slot,
+
+          price: c.price, createTime: new Date().toISOString()
+
+        });
+
+      }
+
     }
-    if (!conflict) {
-      slots.push(slot);
-      data.orders.push({
-        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-        courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
-      });
-      data.schedules.push({
-        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
-        courseId: c.id, date: date, timeSlot: slot,
-        price: c.price, createTime: new Date().toISOString()
-      });
-    }
+
   }
 
   if (slots.length === 0) { showToast('所选时段均已被占用，请重新选择'); return; }
@@ -5605,11 +5777,6 @@ function submitEnroll() {
   renderParentIndex(data);
 
 }
-
-
-
-/* ========== 支付弹窗 ========== */
-
 function openPayModal(el) {
 
   var id = el.getAttribute('data-action-param');
@@ -6333,6 +6500,24 @@ function getParentName(data, parentId) {
   }
 
   return '-';
+
+}
+
+function getParentPhone(data, parentId) {
+
+  if (!parentId) return '';
+
+  if (data.parents) {
+
+    for (var i = 0; i < data.parents.length; i++) {
+
+      if (data.parents[i].id === parentId) return data.parents[i].phone || '';
+
+    }
+
+  }
+
+  return '';
 
 }
 
