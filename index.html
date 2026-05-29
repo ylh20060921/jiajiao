@@ -1548,6 +1548,34 @@ a{text-decoration:none;color:inherit}
 
 
 
+/* ===== 日期多选网格 ===== */
+
+.date-slot-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-top:4px}
+
+.date-slot-check{padding:8px 4px;text-align:center;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-secondary);cursor:pointer;user-select:none;transition:all 0.15s}
+
+.date-slot-check:hover{border-color:var(--accent-cyan);color:var(--text-primary)}
+
+.date-slot-check.selected{background:var(--gradient-primary);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 2px 12px rgba(123,44,191,0.35)}
+
+.date-slot-check.weekend{color:#EF9A9A}
+
+.date-slot-check.weekend.selected{color:#fff}
+
+/* ===== 时段多选网格 ===== */
+
+.time-slot-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:4px}
+
+.time-slot-check{padding:10px 8px;text-align:center;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-secondary);cursor:pointer;user-select:none;transition:all 0.15s}
+
+.time-slot-check:hover{border-color:var(--accent-purple);color:var(--text-primary)}
+
+.time-slot-check.selected{background:var(--gradient-primary);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 2px 12px rgba(123,44,191,0.35)}
+
+.time-slot-check.conflict{opacity:.35;pointer-events:none}
+
+
+
 /* ===== 支付弹窗 ===== */
 
 .pay-info{margin-bottom:14px}
@@ -2932,17 +2960,17 @@ a{text-decoration:none;color:inherit}
 
       <div class="form-group">
 
-        <div class="form-label">上课日期</div>
+        <div class="form-label">选择上课日期 <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none">（可多选，未来30天）</span></div>
 
-        <input class="form-input" type="date" id="enrollDate" data-action="updateEnrollTimeSlots" />
+        <div class="date-slot-grid" id="enrollDateGrid"></div>
 
       </div>
 
       <div class="form-group">
 
-        <div class="form-label">上课时段</div>
+        <div class="form-label">选择上课时段 <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none">（可多选）</span></div>
 
-        <select class="picker-select" id="enrollTimeSlot"></select>
+        <div class="time-slot-grid" id="enrollTimeGrid"></div>
 
       </div>
 
@@ -6644,13 +6672,13 @@ function renderEnrollPage(data, courseId) {
 
   pendingEnrollCourseId = courseId;
 
-  var dateInput = document.getElementById('enrollDate');
+  pendingEnrollPrice = c.price;
 
-  if (dateInput) dateInput.value = '';
+  generateDateGrid();
 
-  var timeSel = document.getElementById('enrollTimeSlot');
+  generateTimeGrid(data, c);
 
-  if (timeSel) timeSel.innerHTML = '<option value="">请先选择日期</option>';
+  updateFeeTotal();
 
 }
 
@@ -6674,113 +6702,23 @@ function goEnroll(el) {
 
 function updateEnrollTimeSlots() {
 
-  var date = document.getElementById('enrollDate').value;
-
-  var sel = document.getElementById('enrollTimeSlot');
-
-  if (!sel || !date) return;
-
-  sel.innerHTML = '';
-
-  var dur = enrollCourseDuration || 90;
-
-  
-
-  // 读取教师端设置的该课程可上课时间
+  // 重新生成时段网格（基于当前课程）
 
   var data = loadData();
 
-  var course = null;
+  var c = null;
 
   for (var i = 0; i < data.courses.length; i++) {
 
-    if (data.courses[i].id === pendingEnrollCourseId && data.courses[i].active !== false) { course = data.courses[i]; break; }
+    if (data.courses[i].id === pendingEnrollCourseId && data.courses[i].active !== false) { c = data.courses[i]; break; }
 
   }
 
-  if (!course) return;
+  if (!c) return;
 
-  var teacher = null;
+  generateTimeGrid(data, c);
 
-  for (var i = 0; i < data.teachers.length; i++) {
-
-    if (data.teachers[i].id === course.teacherId) { teacher = data.teachers[i]; break; }
-
-  }
-
-  
-
-  // 读取教师的上课时间设置（小时），默认 8:00-20:00
-
-  var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
-
-  var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
-
-  
-
-  // 每 30 分钟步进生成可选开始时间
-
-  for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
-
-    var h1 = Math.floor(cur / 60), m1 = cur % 60;
-
-    var end = cur + dur;
-
-    var h2 = Math.floor(end / 60), m2 = end % 60;
-
-    var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
-
-    // 检查该时段是否已被同一老师在同一日期占用（通过已生成的排课检查）
-
-    var occupied = false;
-
-    if (data.schedules) {
-
-      for (var k = 0; k < data.schedules.length; k++) {
-
-        var sch = data.schedules[k];
-
-        if (sch.teacherId === course.teacherId && sch.date === date && sch.timeSlot === label) {
-
-          occupied = true;
-
-          break;
-
-        }
-
-      }
-
-    }
-
-    if (!occupied) {
-
-      var opt = document.createElement('option');
-
-      opt.value = label;
-
-      opt.textContent = label;
-
-      sel.appendChild(opt);
-
-    }
-
-  }
-
-  // 如果所有时段都被占用，显示提示
-
-  if (sel.options.length === 0) {
-
-    var opt = document.createElement('option');
-
-    opt.value = '';
-
-    opt.textContent = '该日期暂无可用时段';
-
-    opt.disabled = true;
-
-    sel.appendChild(opt);
-
-  }
+  updateFeeTotal();
 
 }
 
@@ -6796,15 +6734,41 @@ function pad2(n) {
 
 function submitEnroll() {
 
-  var date = document.getElementById('enrollDate').value;
-
-  var timeSlot = document.getElementById('enrollTimeSlot').value;
-
   var studentName = document.getElementById('enrollStudentName').value.trim();
 
   var remark = document.getElementById('enrollRemark').value.trim();
 
-  if (!date || !timeSlot || !studentName) { showToast('请填写完整信息'); return; }
+  // 收集选中的日期
+
+  var selectedDates = [];
+
+  var dateChecks = document.querySelectorAll('#enrollDateGrid .date-slot-check.selected');
+
+  for (var i = 0; i < dateChecks.length; i++) {
+
+    selectedDates.push(dateChecks[i].getAttribute('data-date'));
+
+  }
+
+  // 收集选中的时段
+
+  var selectedSlots = [];
+
+  var timeChecks = document.querySelectorAll('#enrollTimeGrid .time-slot-check.selected');
+
+  for (var i = 0; i < timeChecks.length; i++) {
+
+    selectedSlots.push(timeChecks[i].getAttribute('data-slot'));
+
+  }
+
+  if (!selectedDates.length || !selectedSlots.length || !studentName) {
+
+    showToast('请完整填写报名信息（日期、时段、学生姓名）');
+
+    return;
+
+  }
 
   var data = loadData();
 
@@ -6818,23 +6782,37 @@ function submitEnroll() {
 
   if (!c) { showToast('课程不存在或已下架'); return; }
 
-  data.orders.push({
+  // 日期 × 时段 双循环，每个组合独立创建订单/排课
 
-    id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+  var totalFee = selectedDates.length * selectedSlots.length * c.price;
 
-    courseId: c.id, amount: c.price, paid: false, createTime: formatDate(new Date())
+  for (var di = 0; di < selectedDates.length; di++) {
 
-  });
+    for (var si = 0; si < selectedSlots.length; si++) {
 
-  data.schedules.push({
+      data.orders.push({
 
-    id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
 
-    courseId: c.id, date: date, timeSlot: timeSlot,
+        courseId: c.id, amount: c.price, paid: false, teacherConfirmed: true,
 
-    price: c.price, createTime: new Date().toISOString()
+        createTime: formatDate(new Date())
 
-  });
+      });
+
+      data.schedules.push({
+
+        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+
+        courseId: c.id, date: selectedDates[di], timeSlot: selectedSlots[si],
+
+        price: c.price, createTime: new Date().toISOString()
+
+      });
+
+    }
+
+  }
 
   currentUser.studentName = studentName;
 
@@ -6858,13 +6836,277 @@ function submitEnroll() {
 
   saveData(data);
 
-  showToastSuccess('报名成功！请尽快支付');
+  showToastSuccess('报名成功！共' + selectedDates.length + '天×' + selectedSlots.length + '时段，合计¥' + totalFee);
 
   showPage('page-parent-course');
 
   renderParentCourses(data);
 
   renderParentIndex(data);
+
+}
+
+
+
+// ===== 报名多选辅助函数 =====
+
+var pendingEnrollPrice = 0;
+
+
+
+function generateDateGrid() {
+
+  var grid = document.getElementById('enrollDateGrid');
+
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  var today = new Date();
+
+  for (var i = 0; i < 30; i++) {
+
+    var d = new Date(today);
+
+    d.setDate(today.getDate() + i);
+
+    var yyyy = d.getFullYear();
+
+    var mm = pad2(d.getMonth() + 1);
+
+    var dd = pad2(d.getDate());
+
+    var dateStr = yyyy + '-' + mm + '-' + dd;
+
+    var dayOfWeek = d.getDay();
+
+    var cls = 'date-slot-check';
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) cls += ' weekend';
+
+    var label = mm + '/' + dd;
+
+    grid.innerHTML += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="toggleDateSlot(this)">'
+
+      + '<div style="font-size:10px;color:var(--text-muted)">' + label + '</div>'
+
+      + '<div>' + ['日','一','二','三','四','五','六'][dayOfWeek] + '</div>'
+
+      + '</div>';
+
+  }
+
+}
+
+
+
+function generateTimeGrid(data, course) {
+
+  var grid = document.getElementById('enrollTimeGrid');
+
+  if (!grid || !course) return;
+
+  grid.innerHTML = '';
+
+  var dur = enrollCourseDuration || 90;
+
+  var teacher = null;
+
+  for (var i = 0; i < data.teachers.length; i++) {
+
+    if (data.teachers[i].id === course.teacherId) { teacher = data.teachers[i]; break; }
+
+  }
+
+  var teacherStartMin = (teacher && teacher.availableStart !== undefined ? teacher.availableStart : 8) * 60;
+
+  var teacherEndMin   = (teacher && teacher.availableEnd   !== undefined ? teacher.availableEnd   : 20) * 60;
+
+  for (var cur = teacherStartMin; cur <= teacherEndMin; cur += 30) {
+
+    var h1 = Math.floor(cur / 60), m1 = cur % 60;
+
+    var end = cur + dur;
+
+    var h2 = Math.floor(end / 60), m2 = end % 60;
+
+    var label = pad2(h1) + ':' + pad2(m1) + '-' + pad2(h2) + ':' + pad2(m2);
+
+    // 检查该时段是否已被同一老师占用（任意日期）
+
+    var occupied = false;
+
+    if (data.schedules) {
+
+      for (var k = 0; k < data.schedules.length; k++) {
+
+        var sch = data.schedules[k];
+
+        if (sch.teacherId === course.teacherId && sch.timeSlot === label) {
+
+          occupied = true;
+
+          break;
+
+        }
+
+      }
+
+    }
+
+    if (!occupied) {
+
+      grid.innerHTML += '<div class="time-slot-check" data-slot="' + label + '" onclick="toggleTimeSlot(this)">' + label + '</div>';
+
+    }
+
+  }
+
+  if (!grid.innerHTML) {
+
+    grid.innerHTML = '<div style="color:var(--text-muted);font-size:12px;padding:8px">暂无可用时段</div>';
+
+  }
+
+}
+
+
+
+function toggleDateSlot(el) {
+
+  el.classList.toggle('selected');
+
+  updateFeeTotal();
+
+}
+
+
+
+function toggleTimeSlot(el) {
+
+  el.classList.toggle('selected');
+
+  updateEnrollTimeSlotConflict();
+
+  updateFeeTotal();
+
+}
+
+
+
+function updateFeeTotal() {
+
+  var dateCount = document.querySelectorAll('#enrollDateGrid .date-slot-check.selected').length;
+
+  var slotCount = document.querySelectorAll('#enrollTimeGrid .time-slot-check.selected').length;
+
+  var total = dateCount * slotCount * (pendingEnrollPrice || 0);
+
+  var el = document.getElementById('feeTotal');
+
+  if (el) {
+
+    el.textContent = '¥' + total + ' (' + dateCount + '天×' + slotCount + '时段)';
+
+  }
+
+}
+
+
+
+function updateEnrollTimeSlotConflict() {
+
+  // 收集所有已选时段的分钟范围
+
+  var selectedRanges = [];
+
+  var selectedEls = document.querySelectorAll('#enrollTimeGrid .time-slot-check.selected');
+
+  for (var i = 0; i < selectedEls.length; i++) {
+
+    var label = selectedEls[i].getAttribute('data-slot');
+
+    selectedRanges.push(parseTimeRange(label));
+
+  }
+
+  // 遍历所有未选时段，检查与已选时段是否重叠
+
+  var allSlots = document.querySelectorAll('#enrollTimeGrid .time-slot-check');
+
+  for (var i = 0; i < allSlots.length; i++) {
+
+    var el = allSlots[i];
+
+    if (el.classList.contains('selected')) {
+
+      el.classList.remove('conflict');
+
+      continue;
+
+    }
+
+    var label = el.getAttribute('data-slot');
+
+    var range = parseTimeRange(label);
+
+    var conflict = false;
+
+    for (var j = 0; j < selectedRanges.length; j++) {
+
+      if (timeRangesOverlap(selectedRanges[j], range)) {
+
+        conflict = true;
+
+        break;
+
+      }
+
+    }
+
+    if (conflict) {
+
+      el.classList.add('conflict');
+
+    } else {
+
+      el.classList.remove('conflict');
+
+    }
+
+  }
+
+}
+
+
+
+function parseTimeRange(slot) {
+
+  // "08:00-09:30" -> {start: 480, end: 570}
+
+  var parts = slot.split('-');
+
+  var s = parts[0].split(':');
+
+  var e = parts[1].split(':');
+
+  return {
+
+    start: parseInt(s[0]) * 60 + parseInt(s[1]),
+
+    end: parseInt(e[0]) * 60 + parseInt(e[1])
+
+  };
+
+}
+
+
+
+function timeRangesOverlap(a, b) {
+
+  // 两个区间重叠：a.start < b.end && b.start < a.end
+
+  return a.start < b.end && b.start < a.end;
 
 }
 
