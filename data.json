@@ -16,8 +16,9 @@
       "pwd": "ef797c8118f02dfb649607dd5d3f8c7623048c9c063d532cc95c5ed7a898a64f",
       "studentName": "qwe",
       "grade": "",
-      "courseId": "",
-      "remark": ""
+      "courseId": "id_1779972027738_bwkpna",
+      "remark": "qwerty",
+      "teacherId": "id_1779969496895_5cv4hh"
     },
     {
       "id": "id_1779969596310_i3qs0s",
@@ -128,8 +129,29 @@
       "active": true
     }
   ],
-  "schedules": [],
-  "orders": [],
+  "schedules": [
+    {
+      "id": "id_1780021521417_0xo7yh",
+      "teacherId": "id_1779969496895_5cv4hh",
+      "parentId": "id_1779969423381_psr4ft",
+      "courseId": "id_1779972027738_bwkpna",
+      "date": "2026-05-29",
+      "timeSlot": "08:00-10:30",
+      "price": 260,
+      "createTime": "2026-05-29T02:25:21.417Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "id_1780021521417_34pmw9",
+      "teacherId": "id_1779969496895_5cv4hh",
+      "parentId": "id_1779969423381_psr4ft",
+      "courseId": "id_1779972027738_bwkpna",
+      "amount": 260,
+      "paid": false,
+      "createTime": "2026年5月29日"
+    }
+  ],
   "admins": [],
   "adminPwd": "8d969eef6ecad3c29a3a629280e686cf0c3f5d5a86aff3ca12020c923adc6c92"
 }
