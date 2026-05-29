@@ -623,7 +623,7 @@
       "parentId": "id_1779969423381_psr4ft",
       "courseId": "id_1779972045622_zw8sar",
       "amount": 260,
-      "paid": false,
+      "paid": true,
       "createTime": "2026年5月29日"
     }
   ],
