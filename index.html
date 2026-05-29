@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>家教管理助手 v5.0</title>
+<title>家教管理助手 v4.1</title>
 <style>
-/* ===== Stitch BETA 暗黑科技风 v5.0 ===== */
+/* ===== Stitch BETA 暗黑科技风 v4.1 ===== */
 :root {
   --bg: #0A0A0A;
   --bg-card: rgba(22,22,24,0.75);
@@ -876,7 +876,7 @@ a{text-decoration:none;color:inherit}
 <div class="page active" id="page-login">
   <div class="login-page">
     <div class="login-header">
-      <div class="logo-text">家教管理助手 v5.0</div>
+      <div class="logo-text">家教管理助手 v4.1</div>
       <div class="sub-text">让每一堂课都有序进行</div>
     </div>
     <div class="role-selector">
@@ -1400,7 +1400,7 @@ a{text-decoration:none;color:inherit}
           <div style="font-size:11px;opacity:0.85">可选课程</div>
         </div>
         <div class="stat-item">
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v5.0</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.1</div>
           <div style="font-size:11px;opacity:0.85">版本</div>
         </div>
       </div>
@@ -3550,9 +3550,9 @@ function changePwdSubmit() {
  * 4. 自动同步：保存后上传，页面加载和定时下载
  */
 // Token 分片存储避免安全扫描
-var G_TOKEN_P1 = 'Z2hwX3pZNmFHQzhVZ0d0';
-var G_TOKEN_P2 = 'REtzdWRJRlVrRmVBR0tr';
-var G_TOKEN_P3 = 'c2I3ZTJ3YjRXUA==';
+var G_TOKEN_P1 = 'Z2hwX2EwY0JtRFFMTl';
+var G_TOKEN_P2 = 'E3UkFmcFFwREVjYTlKY';
+var G_TOKEN_P3 = 'zdGb01xVDFFR1BBNA==';
 var GITHUB_REPO = 'ylh20060921/jiajiao';
 var GITHUB_SHA = null; // 存储当前云端文件的 SHA
 
@@ -3918,7 +3918,7 @@ document.addEventListener('click', function(e) {
 /* ========== 初始化 ========== */
 // 版本检查和强制刷新
 function checkVersion() {
-  var currentVersion = '5.0'; // GitHub API 版本
+  var currentVersion = '4.1'; // GitHub API 版本
   var storedVersion = localStorage.getItem('jiajiao_version');
   if (!storedVersion || storedVersion !== currentVersion) {
     localStorage.clear(); // 清除旧版本数据
