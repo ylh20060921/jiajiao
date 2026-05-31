@@ -77,8 +77,9 @@
       "pwd": "123456",
       "studentName": "宝宝",
       "grade": "",
-      "courseId": "",
-      "remark": ""
+      "courseId": "id_1780227044461_cdxvaf",
+      "remark": "",
+      "teacherId": "id_1779969496895_5cv4hh"
     }
   ],
   "courses": [
@@ -105,8 +106,30 @@
       "active": true
     }
   ],
-  "schedules": [],
-  "orders": [],
+  "schedules": [
+    {
+      "id": "id_1780227151450_vj8umk",
+      "teacherId": "id_1779969496895_5cv4hh",
+      "parentId": "id_1780144934774_60ym4r",
+      "courseId": "id_1780227044461_cdxvaf",
+      "date": "2026-06-01",
+      "timeSlot": "08:30-11:00",
+      "price": 260,
+      "createTime": "2026-05-31T11:32:31.450Z"
+    }
+  ],
+  "orders": [
+    {
+      "id": "id_1780227151450_yoqngw",
+      "teacherId": "id_1779969496895_5cv4hh",
+      "parentId": "id_1780144934774_60ym4r",
+      "courseId": "id_1780227044461_cdxvaf",
+      "amount": 260,
+      "paid": false,
+      "teacherConfirmed": true,
+      "createTime": "2026年5月31日"
+    }
+  ],
   "admins": [],
   "adminPwd": "123456"
 }
