@@ -81,7 +81,19 @@
       "remark": ""
     }
   ],
-  "courses": [],
+  "courses": [
+    {
+      "id": "id_1780227044461_cdxvaf",
+      "teacherId": "id_1779969496895_5cv4hh",
+      "name": "初中物理",
+      "price": 260,
+      "duration": 150,
+      "desc": "",
+      "grade": "",
+      "subject": "",
+      "active": true
+    }
+  ],
   "schedules": [],
   "orders": [],
   "admins": [],
