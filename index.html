@@ -1812,17 +1812,23 @@ a{text-decoration:none;color:inherit}
 
 
 
-/* ===== 日期多选网格 ===== */
-
-.date-slot-check{padding:8px 4px;text-align:center;font-size:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-input);color:var(--text-secondary);cursor:pointer;user-select:none;transition:all var(--transition-fast)}
-
-.date-slot-check:hover{border-color:var(--accent-cyan);color:var(--text-primary);background:rgba(0,229,240,0.06)}
-
-.date-slot-check.selected{background:var(--gradient-primary);color:#fff;border-color:transparent;font-weight:600;box-shadow:0 2px 10px rgba(123,58,237,0.3)}
-
-.date-slot-check.weekend{color:#EF9A9A}
-
-.date-slot-check.weekend.selected{color:#fff}
+/* ===== 报名多月日历 ===== */
+.enroll-calendar-wrap{display:flex;gap:16px;flex-wrap:wrap}
+.enroll-calendar-month{flex:1 1 280px;min-width:260px;background:var(--bg-card);backdrop-filter:var(--glass-blur);border-radius:var(--radius-md);border:1px solid var(--border);padding:14px}
+.enroll-calendar-month .cal-month-title{font-size:16px;font-weight:700;color:var(--text-primary);text-align:center;margin-bottom:10px}
+.enroll-calendar-month .cal-weekdays{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;margin-bottom:6px}
+.enroll-calendar-month .cal-weekdays span{font-size:11px;color:var(--text-muted);font-weight:500;padding:4px 0}
+.enroll-calendar-month .cal-weekdays span.weekend{color:#EF9A9A}
+.enroll-calendar-month .cal-days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.enroll-calendar-month .cal-day{padding:6px 0;text-align:center;font-size:12px;border-radius:var(--radius-sm);color:var(--text-secondary);cursor:pointer;user-select:none;transition:all var(--transition-fast);position:relative}
+.enroll-calendar-month .cal-day:hover{background:rgba(0,229,240,0.1);color:var(--text-primary)}
+.enroll-calendar-month .cal-day.weekend{color:#EF9A9A}
+.enroll-calendar-month .cal-day.other-month{color:var(--text-muted);opacity:0.4;pointer-events:none}
+.enroll-calendar-month .cal-day.today{border:1px solid var(--accent-cyan)}
+.enroll-calendar-month .cal-day.selected{background:var(--gradient-primary);color:#fff;font-weight:600;box-shadow:0 2px 10px rgba(123,58,237,0.3)}
+.enroll-calendar-month .cal-day.selected.weekend{color:#fff}
+.cal-selected-count{text-align:center;font-size:13px;color:var(--text-secondary);margin-top:10px}
+.cal-selected-count strong{color:var(--accent-purple);font-size:15px}
 
 /* ===== 时段多选网格 ===== */
 
@@ -3332,9 +3338,11 @@ a{text-decoration:none;color:inherit}
 
       <div class="form-group">
 
-        <div class="form-label">选择上课日期 <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none">（可多选，未来30天）</span></div>
+        <div class="form-label">选择上课日期 <span style="font-size:11px;color:var(--text-muted);font-weight:400;text-transform:none">（可多选，跨月支持）</span></div>
 
-        <div class="date-slot-grid" id="enrollDateGrid"></div>
+        <div class="enroll-calendar-wrap" id="enrollCalendarWrap"></div>
+
+        <div class="cal-selected-count" id="calSelectedCount">已选 <strong>0</strong> 个日期</div>
 
       </div>
 
@@ -7046,6 +7054,8 @@ function renderEnrollPage(data, courseId) {
 
   pendingEnrollPrice = c.price;
 
+  enrollSelectedDates = [];
+
   generateDateGrid();
 
   generateTimeGrid(data, c);
@@ -7090,6 +7100,8 @@ function updateEnrollTimeSlots() {
 
   generateTimeGrid(data, c);
 
+  updateEnrollTimeSlotConflict();
+
   updateFeeTotal();
 
 }
@@ -7110,17 +7122,9 @@ function submitEnroll() {
 
   var remark = document.getElementById('enrollRemark').value.trim();
 
-  // 收集选中的日期
+  // 使用全局的 enrollSelectedDates
 
-  var selectedDates = [];
-
-  var dateChecks = document.querySelectorAll('#enrollDateGrid .date-slot-check.selected');
-
-  for (var i = 0; i < dateChecks.length; i++) {
-
-    selectedDates.push(dateChecks[i].getAttribute('data-date'));
-
-  }
+  var selectedDates = enrollSelectedDates.slice();
 
   // 收集选中的时段
 
@@ -7161,14 +7165,22 @@ function submitEnroll() {
 
   for (var di = 0; di < selectedDates.length; di++) {
     for (var si = 0; si < selectedSlots.length; si++) {
-      // 检查该日期+时段是否已被该教师占用
+      // 检查该日期+时段是否与已有排课重叠（同一老师同一日期，时间段重叠即冲突）
       var occupied = false;
+      var slotRange = parseTimeRange(selectedSlots[si]);
       if (data.schedules) {
         for (var k = 0; k < data.schedules.length; k++) {
           var sch = data.schedules[k];
-          if (sch.teacherId === c.teacherId && sch.date === selectedDates[di] && sch.timeSlot === selectedSlots[si]) {
-            occupied = true;
-            break;
+          if (sch.teacherId === c.teacherId && sch.date === selectedDates[di]) {
+            if (sch.timeSlot === selectedSlots[si]) {
+              occupied = true;
+              break;
+            }
+            var schRange = parseTimeRange(sch.timeSlot);
+            if (timeRangesOverlap(slotRange, schRange)) {
+              occupied = true;
+              break;
+            }
           }
         }
       }
@@ -7241,47 +7253,79 @@ var pendingEnrollPrice = 0;
 
 
 function generateDateGrid() {
+  var wrap = document.getElementById('enrollCalendarWrap');
+  if (!wrap) return;
+  wrap.innerHTML = '';
+  var now = new Date();
+  // 当前月 + 下个月
+  renderCalendarMonth(wrap, now.getFullYear(), now.getMonth());
+  renderCalendarMonth(wrap, now.getFullYear(), now.getMonth() + 1);
+  updateCalSelectedCount();
+}
 
-  var grid = document.getElementById('enrollDateGrid');
+function renderCalendarMonth(wrap, year, month) {
+  var monthDiv = document.createElement('div');
+  monthDiv.className = 'enroll-calendar-month';
+  var firstDay = new Date(year, month, 1);
+  var lastDay = new Date(year, month + 1, 0);
+  var totalDays = lastDay.getDate();
+  var startDow = firstDay.getDay(); // 0=Sun
+  var now = new Date();
+  var todayStr = now.getFullYear() + '-' + pad2(now.getMonth()+1) + '-' + pad2(now.getDate());
 
-  if (!grid) return;
-
-  grid.innerHTML = '';
-
-  var today = new Date();
-
-  for (var i = 0; i < 30; i++) {
-
-    var d = new Date(today);
-
-    d.setDate(today.getDate() + i);
-
-    var yyyy = d.getFullYear();
-
-    var mm = pad2(d.getMonth() + 1);
-
-    var dd = pad2(d.getDate());
-
-    var dateStr = yyyy + '-' + mm + '-' + dd;
-
-    var dayOfWeek = d.getDay();
-
-    var cls = 'date-slot-check';
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) cls += ' weekend';
-
-    var label = mm + '/' + dd;
-
-    grid.innerHTML += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="toggleDateSlot(this)">'
-
-      + '<div style="font-size:10px;color:var(--text-muted)">' + label + '</div>'
-
-      + '<div>' + ['日','一','二','三','四','五','六'][dayOfWeek] + '</div>'
-
-      + '</div>';
-
+  // 标题
+  var titleHtml = '<div class="cal-month-title">' + year + '年' + (month+1) + '月</div>';
+  // 星期头
+  titleHtml += '<div class="cal-weekdays">';
+  var weekNames = ['日','一','二','三','四','五','六'];
+  for (var w = 0; w < 7; w++) {
+    var wcls = (w === 0 || w === 6) ? ' weekend' : '';
+    titleHtml += '<span class="' + wcls + '">' + weekNames[w] + '</span>';
   }
+  titleHtml += '</div>';
+  // 日期网格
+  titleHtml += '<div class="cal-days">';
+  // 前置空白格
+  for (var i = 0; i < startDow; i++) {
+    titleHtml += '<div class="cal-day other-month"></div>';
+  }
+  for (var d = 1; d <= totalDays; d++) {
+    var dateObj = new Date(year, month, d);
+    var dow = dateObj.getDay();
+    var dateStr = year + '-' + pad2(month+1) + '-' + pad2(d);
+    var cls = 'cal-day';
+    if (dow === 0 || dow === 6) cls += ' weekend';
+    if (dateStr === todayStr) cls += ' today';
+    // 检查是否已选
+    if (enrollSelectedDates.indexOf(dateStr) !== -1) cls += ' selected';
+    titleHtml += '<div class="' + cls + '" data-date="' + dateStr + '" onclick="toggleCalendarDay(this)">' + d + '</div>';
+  }
+  titleHtml += '</div>';
+  monthDiv.innerHTML = titleHtml;
+  wrap.appendChild(monthDiv);
+}
 
+var enrollSelectedDates = [];
+
+function toggleCalendarDay(el) {
+  var dateStr = el.getAttribute('data-date');
+  var idx = enrollSelectedDates.indexOf(dateStr);
+  if (idx !== -1) {
+    enrollSelectedDates.splice(idx, 1);
+  } else {
+    enrollSelectedDates.push(dateStr);
+  }
+  // 刷新日历显示 + 时段冲突检测（选中的日期可能触发已有排课冲突）
+  generateDateGrid();
+  updateEnrollTimeSlotConflict();
+  updateFeeTotal();
+}
+
+function updateCalSelectedCount() {
+  var el = document.getElementById('calSelectedCount');
+  if (el) {
+    el.innerHTML = '已选 <strong>' + enrollSelectedDates.length + '</strong> 个日期';
+  }
 }
 
 
@@ -7332,13 +7376,7 @@ function generateTimeGrid(data, course) {
 
 
 
-function toggleDateSlot(el) {
-
-  el.classList.toggle('selected');
-
-  updateFeeTotal();
-
-}
+// toggleDateSlot removed — replaced by toggleCalendarDay above
 
 
 
@@ -7356,7 +7394,7 @@ function toggleTimeSlot(el) {
 
 function updateFeeTotal() {
 
-  var dateCount = document.querySelectorAll('#enrollDateGrid .date-slot-check.selected').length;
+  var dateCount = enrollSelectedDates.length;
 
   var slotCount = document.querySelectorAll('#enrollTimeGrid .time-slot-check.selected').length;
 
@@ -7390,7 +7428,41 @@ function updateEnrollTimeSlotConflict() {
 
   }
 
-  // 遍历所有未选时段，检查与已选时段是否重叠
+  // 收集教师在所有已选日期上的已有排课时段范围
+
+  var data = loadData();
+
+  var existingRanges = [];
+
+  if (enrollSelectedDates.length > 0 && data.schedules) {
+
+    var c = null;
+
+    for (var i = 0; i < data.courses.length; i++) {
+
+      if (data.courses[i].id === pendingEnrollCourseId && data.courses[i].active !== false) { c = data.courses[i]; break; }
+
+    }
+
+    if (c) {
+
+      for (var i = 0; i < data.schedules.length; i++) {
+
+        var sch = data.schedules[i];
+
+        if (sch.teacherId === c.teacherId && enrollSelectedDates.indexOf(sch.date) !== -1) {
+
+          existingRanges.push(parseTimeRange(sch.timeSlot));
+
+        }
+
+      }
+
+    }
+
+  }
+
+  // 遍历所有未选时段，检查与已选时段或已有排课是否重叠
 
   var allSlots = document.querySelectorAll('#enrollTimeGrid .time-slot-check');
 
@@ -7412,6 +7484,8 @@ function updateEnrollTimeSlotConflict() {
 
     var conflict = false;
 
+    // 检查与已选时段重叠
+
     for (var j = 0; j < selectedRanges.length; j++) {
 
       if (timeRangesOverlap(selectedRanges[j], range)) {
@@ -7419,6 +7493,24 @@ function updateEnrollTimeSlotConflict() {
         conflict = true;
 
         break;
+
+      }
+
+    }
+
+    // 检查与已有排课重叠
+
+    if (!conflict) {
+
+      for (var j = 0; j < existingRanges.length; j++) {
+
+        if (timeRangesOverlap(existingRanges[j], range)) {
+
+          conflict = true;
+
+          break;
+
+        }
 
       }
 
