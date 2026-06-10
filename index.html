@@ -8371,6 +8371,8 @@ a{text-decoration:none;color:inherit}
 .feedback-filter-item:hover{color:var(--text-primary);border-color:var(--accent-purple)}
 .feedback-filter-item.selected{background:rgba(123,44,191,0.15);border-color:var(--accent-purple);color:var(--accent-purple);font-weight:600}
 .feedback-empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:13px}
+.feedback-delete-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(244,67,54,0.1);color:#EF5350;font-size:12px;cursor:pointer;transition:all var(--transition-fast);margin-left:6px}
+.feedback-delete-btn:hover{background:rgba(244,67,54,0.25);transform:scale(1.1)}
 
 </style>
 
@@ -17529,6 +17531,7 @@ function renderFeedbackList(feedbacks, isAdmin, statusFilter) {
     html += '<span class="feedback-type-badge ' + f.type + '">' + (typeLabels[f.type] || f.type) + '</span>';
     if (isAdmin) {
       html += '<span class="feedback-status-badge ' + f.status + '" data-action="toggleFeedbackStatus" data-id="' + f.id + '" data-status="' + f.status + '">' + (statusLabels[f.status] || f.status) + '</span>';
+      html += '<span class="feedback-delete-btn" data-action="deleteFeedback" data-id="' + f.id + '">&#x1F5D1;</span>';
     } else {
       html += '<span class="feedback-status-badge ' + f.status + '">' + (statusLabels[f.status] || f.status) + '</span>';
     }
@@ -17663,6 +17666,23 @@ function escapeHtml(str) {
   var div = document.createElement('div');
   div.textContent = str;
   return div.innerHTML;
+}
+
+function deleteFeedback(el) {
+  var id = el.getAttribute('data-id');
+  var data = loadData();
+  if (!data.feedback) return;
+  var newFeedback = [];
+  for (var i = 0; i < data.feedback.length; i++) {
+    if (data.feedback[i].id !== id) {
+      newFeedback.push(data.feedback[i]);
+    }
+  }
+  data.feedback = newFeedback;
+  saveData(data);
+  autoSyncUpload(data);
+  renderAdminFeedback(data);
+  showToast('反馈已删除');
 }
 
 
@@ -36273,6 +36293,8 @@ var actionRoutes = {
   toggleFeedbackStatus: function(el) { toggleFeedbackStatus(el); },
 
   filterFeedback: function(el) { filterFeedback(el); },
+
+  deleteFeedback: function(el) { deleteFeedback(el); },
 
 
 
