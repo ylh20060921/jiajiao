@@ -161,6 +161,17 @@
       "grade": "",
       "subject": "",
       "active": true
+    },
+    {
+      "id": "id_1781099600533_iqcwkq",
+      "teacherId": "id_1781098524009_0cqn2q",
+      "name": "高中语文",
+      "price": 300,
+      "duration": 150,
+      "desc": "优先教学文言文",
+      "grade": "",
+      "subject": "",
+      "active": true
     }
   ],
   "schedules": [],
