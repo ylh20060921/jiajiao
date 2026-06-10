@@ -5098,13 +5098,15 @@ function renderTodaySchedules(data) {
 
     var pName = getParentName(data, s.parentId);
 
+    var pPhone = getParentPhone(data, s.parentId);
+
     var cName = getCourseName(data, s.courseId);
 
     html += '<div class="card" style="margin-bottom:8px;padding:12px">'
 
       + '<div style="font-weight:600;font-size:15px">' + (s.timeSlot || '-') + '</div>'
 
-      + '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px">家长：' + esc(pName) + '</div>'
+      + '<div style="font-size:13px;color:var(--text-secondary);margin-top:4px">家长：' + esc(pName) + (pPhone ? '  <span style="color:var(--accent-cyan)">' + esc(pPhone) + '</span>' : '') + '</div>'
 
       + '<div style="font-size:13px;color:var(--text-secondary)">课程：' + esc(cName) + '</div>'
 
@@ -6034,9 +6036,11 @@ function renderTeacherSchedules(data) {
 
         var pName = getParentName(data, s.parentId);
 
+        var pPhone = getParentPhone(data, s.parentId);
+
         var cName = getCourseName(data, s.courseId);
 
-        html += '<div class="sch-event" title="' + esc(pName) + ' - ' + esc(cName) + '">';
+        html += '<div class="sch-event" title="' + esc(pName) + (pPhone ? ' ' + pPhone + ' - ' : ' - ') + esc(cName) + '">';
 
         html += '<span class="sch-event-time">' + (s.timeSlot || '-') + '</span>';
 
@@ -6072,6 +6076,8 @@ function renderTeacherSchedules(data) {
 
       var pName = getParentName(data, s.parentId);
 
+      var pPhone = getParentPhone(data, s.parentId);
+
       var cName = getCourseName(data, s.courseId);
 
       html += '<div class="sch-today-item">';
@@ -6080,7 +6086,7 @@ function renderTeacherSchedules(data) {
 
       html += '<span class="sch-today-course">' + esc(cName) + '</span>';
 
-      html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+      html += '<span class="sch-today-parent">' + esc(pName) + (pPhone ? '  ' + esc(pPhone) : '') + '</span>';
 
       html += '</div>';
 
@@ -6258,6 +6264,8 @@ function renderSchCal(data, year, month) {
 
       var pName = getParentName(data, s.parentId);
 
+      var pPhone = getParentPhone(data, s.parentId);
+
       var cName = getCourseName(data, s.courseId);
 
       html += '<div class="sch-today-item">';
@@ -6266,7 +6274,7 @@ function renderSchCal(data, year, month) {
 
       html += '<span class="sch-today-course">' + esc(cName) + '</span>';
 
-      html += '<span class="sch-today-parent">' + esc(pName) + '</span>';
+      html += '<span class="sch-today-parent">' + esc(pName) + (pPhone ? '  ' + esc(pPhone) : '') + '</span>';
 
       html += '</div>';
 
@@ -6508,6 +6516,8 @@ function renderTeacherOrders(data) {
 
     var pName = getParentName(data, o.parentId);
 
+    var pPhone = getParentPhone(data, o.parentId);
+
     var cName = getCourseName(data, o.courseId);
 
     html += '<div class="order-card">'
@@ -6522,7 +6532,7 @@ function renderTeacherOrders(data) {
 
       + '<div class="order-body">'
 
-      + '<div class="order-row"><span class="order-label">家长</span><span class="order-value">' + esc(pName) + '</span></div>'
+      + '<div class="order-row"><span class="order-label">家长</span><span class="order-value">' + esc(pName) + (pPhone ? ' <span style="color:var(--accent-cyan);font-size:12px">' + esc(pPhone) + '</span>' : '') + '</span></div>'
 
       + '<div class="order-row"><span class="order-label">报名日期</span><span class="order-value">' + (o.createTime || '-') + '</span></div>'
 
@@ -8309,6 +8319,21 @@ function getParentName(data, parentId) {
   }
 
   return '-';
+
+}
+
+
+
+function getParentPhone(data, parentId) {
+
+  if (!parentId) return '';
+
+  if (data.parents) {
+    for (var i = 0; i < data.parents.length; i++) {
+      if (data.parents[i].id === parentId) return data.parents[i].phone || '';
+    }
+  }
+  return '';
 
 }
 
