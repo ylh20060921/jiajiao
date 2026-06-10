@@ -128,6 +128,17 @@
       "grade": "",
       "subject": "",
       "active": true
+    },
+    {
+      "id": "id_1781099287166_4hj3we",
+      "teacherId": "id_1781086492410_lxidr9",
+      "name": "高三化学",
+      "price": 400,
+      "duration": 150,
+      "desc": "人教版高三化学总复习",
+      "grade": "",
+      "subject": "",
+      "active": true
     }
   ],
   "schedules": [],
