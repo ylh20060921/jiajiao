@@ -38,7 +38,7 @@
 
 
 
-<title>家教管理助手 v4.4</title>
+<title>家教管理助手 v4.5</title>
 
 
 
@@ -8346,6 +8346,32 @@ a{text-decoration:none;color:inherit}
 
 
 
+
+/* ========== 反馈功能 ========== */
+.feedback-type-select{display:flex;gap:6px;flex-wrap:wrap}
+.feedback-type-option{flex:1 1 calc(50% - 6px);min-width:80px;padding:10px 8px;border:1px solid var(--border);border-radius:var(--radius-sm);text-align:center;font-size:12px;color:var(--text-muted);cursor:pointer;transition:all var(--transition-fast);background:var(--bg-input)}
+.feedback-type-option:hover{color:var(--text-primary);border-color:var(--accent-purple)}
+.feedback-type-option.selected{background:rgba(123,44,191,0.15);border-color:var(--accent-purple);color:var(--accent-purple);font-weight:600}
+.feedback-textarea{min-height:120px;padding:12px 14px;resize:vertical;line-height:1.6;font-family:inherit}
+.feedback-item{background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius-md);padding:16px;margin-bottom:12px;box-shadow:0 4px 12px rgba(0,0,0,0.3)}
+.feedback-item-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px}
+.feedback-type-badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600;white-space:nowrap}
+.feedback-type-badge.bug{background:rgba(244,67,54,0.15);color:#EF5350}
+.feedback-type-badge.feature{background:rgba(76,175,80,0.15);color:#66BB6A}
+.feedback-type-badge.usage{background:rgba(33,150,243,0.15);color:#42A5F5}
+.feedback-type-badge.other{background:rgba(158,158,158,0.15);color:#BDBDBD}
+.feedback-item-content{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px;white-space:pre-wrap;word-break:break-word}
+.feedback-item-meta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--text-muted)}
+.feedback-status-badge{font-size:10px;padding:3px 8px;border-radius:10px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all var(--transition-fast)}
+.feedback-status-badge.pending{background:rgba(255,152,0,0.15);color:#FFA726}
+.feedback-status-badge.replied{background:rgba(76,175,80,0.15);color:#66BB6A}
+.feedback-status-badge.closed{background:rgba(158,158,158,0.15);color:#BDBDBD}
+.feedback-filter-bar{display:flex;gap:6px;margin-bottom:16px;flex-wrap:wrap}
+.feedback-filter-item{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius-capsule);font-size:12px;color:var(--text-muted);cursor:pointer;transition:all var(--transition-fast);background:var(--bg-input)}
+.feedback-filter-item:hover{color:var(--text-primary);border-color:var(--accent-purple)}
+.feedback-filter-item.selected{background:rgba(123,44,191,0.15);border-color:var(--accent-purple);color:var(--accent-purple);font-weight:600}
+.feedback-empty{text-align:center;padding:40px 20px;color:var(--text-muted);font-size:13px}
+
 </style>
 
 
@@ -9780,11 +9806,29 @@ a{text-decoration:none;color:inherit}
 
     <div class="menu-section">
 
+      <div class="section-title">用户反馈</div>
 
+      <div class="menu-list">
 
+        <div class="menu-item" data-action="navPage" data-target="page-admin-feedback">
 
+          <div class="menu-left">
 
+            <div class="menu-icon">&#x1F4AC;</div>
 
+            <div class="menu-text">反馈管理</div>
+
+          </div>
+
+          <div class="menu-arrow">&#x203A;</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="menu-section">
 
       <div class="section-title">系统设置</div>
 
@@ -14485,6 +14529,38 @@ a{text-decoration:none;color:inherit}
 
 
 
+    </div>
+
+
+
+
+
+
+
+  <div class="tab-item" data-action="navPage" data-target="page-teacher-feedback">
+
+
+
+
+
+
+
+    <div class="tab-icon">&#x1F4DD;</div>
+
+
+
+
+
+
+
+    <div class="tab-text">反馈</div>
+
+
+
+
+
+
+
   </div>
 
 
@@ -14638,6 +14714,38 @@ a{text-decoration:none;color:inherit}
 
 
     <div class="tab-text">我的</div>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+  <div class="tab-item" data-action="navPage" data-target="page-parent-feedback">
+
+
+
+
+
+
+
+    <div class="tab-icon">&#x1F4DD;</div>
+
+
+
+
+
+
+
+    <div class="tab-text">反馈</div>
 
 
 
@@ -15037,6 +15145,197 @@ a{text-decoration:none;color:inherit}
 
 
 
+
+<!-- ==================== 教师反馈页 ==================== -->
+
+<div class="page" id="page-teacher-feedback">
+
+  <div class="container">
+
+    <div class="page-header">
+
+      <div>
+
+        <div class="header-title">问题反馈</div>
+
+        <div class="header-desc">遇到问题或有建议？请告诉我们</div>
+
+      </div>
+
+    </div>
+
+    <div class="form-card">
+
+      <div class="form-title">提交反馈</div>
+
+      <div class="form-group">
+
+        <div class="form-label">反馈类型</div>
+
+        <div class="feedback-type-select" id="feedbackTypeTeacher">
+
+          <div class="feedback-type-option selected" data-type="bug">Bug反馈</div>
+
+          <div class="feedback-type-option" data-type="feature">功能建议</div>
+
+          <div class="feedback-type-option" data-type="usage">使用问题</div>
+
+          <div class="feedback-type-option" data-type="other">其他</div>
+
+        </div>
+
+      </div>
+
+      <div class="form-group">
+
+        <div class="form-label">反馈内容</div>
+
+        <textarea class="form-input feedback-textarea" id="feedbackContentTeacher" rows="4" placeholder="请详细描述您遇到的问题或建议..."></textarea>
+
+      </div>
+
+      <div class="form-group">
+
+        <div class="form-label">联系方式（选填）</div>
+
+        <input class="form-input" id="feedbackPhoneTeacher" readonly style="opacity:0.7" />
+
+      </div>
+
+      <button class="submit-btn" data-action="submitFeedback" data-role="teacher">提交反馈</button>
+
+    </div>
+
+    <div class="list-header">
+
+      <div class="header-title">我的反馈记录</div>
+
+    </div>
+
+    <div id="feedbackHistoryTeacher"></div>
+
+  </div>
+
+</div>
+
+<!-- ==================== 家长反馈页 ==================== -->
+
+<div class="page" id="page-parent-feedback">
+
+  <div class="container">
+
+    <div class="page-header">
+
+      <div>
+
+        <div class="header-title">问题反馈</div>
+
+        <div class="header-desc">遇到问题或有建议？请告诉我们</div>
+
+      </div>
+
+    </div>
+
+    <div class="form-card">
+
+      <div class="form-title">提交反馈</div>
+
+      <div class="form-group">
+
+        <div class="form-label">反馈类型</div>
+
+        <div class="feedback-type-select" id="feedbackTypeParent">
+
+          <div class="feedback-type-option selected" data-type="bug">Bug反馈</div>
+
+          <div class="feedback-type-option" data-type="feature">功能建议</div>
+
+          <div class="feedback-type-option" data-type="usage">使用问题</div>
+
+          <div class="feedback-type-option" data-type="other">其他</div>
+
+        </div>
+
+      </div>
+
+      <div class="form-group">
+
+        <div class="form-label">反馈内容</div>
+
+        <textarea class="form-input feedback-textarea" id="feedbackContentParent" rows="4" placeholder="请详细描述您遇到的问题或建议..."></textarea>
+
+      </div>
+
+      <div class="form-group">
+
+        <div class="form-label">联系方式（选填）</div>
+
+        <input class="form-input" id="feedbackPhoneParent" readonly style="opacity:0.7" />
+
+      </div>
+
+      <button class="submit-btn" data-action="submitFeedback" data-role="parent">提交反馈</button>
+
+    </div>
+
+    <div class="list-header">
+
+      <div class="header-title">我的反馈记录</div>
+
+    </div>
+
+    <div id="feedbackHistoryParent"></div>
+
+  </div>
+
+</div>
+
+<!-- ==================== 管理员反馈管理页 ==================== -->
+
+<div class="page" id="page-admin-feedback">
+
+  <div class="container">
+
+    <div class="page-header">
+
+      <div>
+
+        <div class="header-title">反馈管理</div>
+
+        <div class="header-desc">查看所有用户反馈</div>
+
+      </div>
+
+      <div class="back-btn" data-action="navPage" data-target="page-admin-index">返回后台</div>
+
+    </div>
+
+    <div class="feedback-filter-bar">
+
+      <div class="feedback-filter-item selected" data-status="all" data-action="filterFeedback">全部</div>
+
+      <div class="feedback-filter-item" data-status="pending" data-action="filterFeedback">待处理</div>
+
+      <div class="feedback-filter-item" data-status="replied" data-action="filterFeedback">已回复</div>
+
+      <div class="feedback-filter-item" data-status="closed" data-action="filterFeedback">已关闭</div>
+
+    </div>
+
+    <div id="feedbackListAdmin"></div>
+
+  </div>
+
+</div>
+
+
+
+
+
+
+
+
+
 <script>
 
 
@@ -15357,7 +15656,8 @@ function getDefaultData() {
 
 
 
-    admins: []
+    admins: [],
+    feedback: []
 
 
 
@@ -15951,6 +16251,8 @@ function showPage(pageId) {
 
   if (pageId === 'page-teacher-income') showTabBar('teacher');
 
+  if (pageId === 'page-teacher-feedback') showTabBar('teacher');
+
 
 
 
@@ -15978,6 +16280,8 @@ function showPage(pageId) {
 
 
   if (pageId === 'page-parent-info') showTabBar('parent');
+
+  if (pageId === 'page-parent-feedback') showTabBar('parent');
 
 
 
@@ -16119,11 +16423,11 @@ function showPage(pageId) {
 
   if (pageId === 'page-parent-info' && currentUser && currentUser.id) renderParentInfo(data);
 
+  if (pageId === 'page-teacher-feedback' && currentUser && currentUser.id) renderTeacherFeedback(data);
 
+  if (pageId === 'page-parent-feedback' && currentUser && currentUser.id) renderParentFeedback(data);
 
-
-
-
+  if (pageId === 'page-admin-feedback') renderAdminFeedback(data);
 
   // 启动倒计时
 
@@ -17147,6 +17451,219 @@ function logout() {
 
 
 
+
+
+
+/* ========== 反馈功能 ========== */
+
+function renderTeacherFeedback(data) {
+  var phone = currentUser.phone || '';
+  var phoneInput = document.getElementById('feedbackPhoneTeacher');
+  if (phoneInput) phoneInput.value = phone;
+
+  var feedbacks = data.feedback || [];
+  var myFeedbacks = [];
+  for (var i = 0; i < feedbacks.length; i++) {
+    if (feedbacks[i].userId === currentUser.id) {
+      myFeedbacks.push(feedbacks[i]);
+    }
+  }
+  myFeedbacks.sort(function(a, b) { return b.createdAt.localeCompare(a.createdAt); });
+
+  var container = document.getElementById('feedbackHistoryTeacher');
+  if (!container) return;
+  container.innerHTML = renderFeedbackList(myFeedbacks, false);
+}
+
+function renderParentFeedback(data) {
+  var phone = currentUser.phone || '';
+  var phoneInput = document.getElementById('feedbackPhoneParent');
+  if (phoneInput) phoneInput.value = phone;
+
+  var feedbacks = data.feedback || [];
+  var myFeedbacks = [];
+  for (var i = 0; i < feedbacks.length; i++) {
+    if (feedbacks[i].userId === currentUser.id) {
+      myFeedbacks.push(feedbacks[i]);
+    }
+  }
+  myFeedbacks.sort(function(a, b) { return b.createdAt.localeCompare(a.createdAt); });
+
+  var container = document.getElementById('feedbackHistoryParent');
+  if (!container) return;
+  container.innerHTML = renderFeedbackList(myFeedbacks, false);
+}
+
+function renderAdminFeedback(data) {
+  var feedbacks = data.feedback || [];
+  feedbacks.sort(function(a, b) { return b.createdAt.localeCompare(a.createdAt); });
+  
+  // Apply filter if set
+  var activeFilter = document.querySelector('.feedback-filter-item.selected');
+  var statusFilter = activeFilter ? activeFilter.getAttribute('data-status') : 'all';
+  
+  var container = document.getElementById('feedbackListAdmin');
+  if (!container) return;
+  container.innerHTML = renderFeedbackList(feedbacks, true, statusFilter);
+}
+
+function renderFeedbackList(feedbacks, isAdmin, statusFilter) {
+  if (statusFilter && statusFilter !== 'all') {
+    feedbacks = feedbacks.filter(function(f) { return f.status === statusFilter; });
+  }
+  
+  if (feedbacks.length === 0) {
+    return '<div class="feedback-empty">暂无反馈记录</div>';
+  }
+
+  var html = '';
+  var typeLabels = {bug: 'Bug反馈', feature: '功能建议', usage: '使用问题', other: '其他'};
+  var statusLabels = {pending: '待处理', replied: '已回复', closed: '已关闭'};
+  
+  for (var i = 0; i < feedbacks.length; i++) {
+    var f = feedbacks[i];
+    var time = f.createdAt ? f.createdAt.replace('T', ' ').substring(0, 16) : '';
+    
+    html += '<div class="feedback-item">';
+    html += '<div class="feedback-item-header">';
+    html += '<span class="feedback-type-badge ' + f.type + '">' + (typeLabels[f.type] || f.type) + '</span>';
+    if (isAdmin) {
+      html += '<span class="feedback-status-badge ' + f.status + '" data-action="toggleFeedbackStatus" data-id="' + f.id + '" data-status="' + f.status + '">' + (statusLabels[f.status] || f.status) + '</span>';
+    } else {
+      html += '<span class="feedback-status-badge ' + f.status + '">' + (statusLabels[f.status] || f.status) + '</span>';
+    }
+    html += '</div>';
+    html += '<div class="feedback-item-content">' + escapeHtml(f.content) + '</div>';
+    html += '<div class="feedback-item-meta">';
+    if (isAdmin) {
+      html += '<span>' + (f.userRole === 'teacher' ? '教师' : '家长') + ' | ' + f.phone + '</span>';
+    } else {
+      html += '<span>' + f.phone + '</span>';
+    }
+    html += '<span>' + time + '</span>';
+    html += '</div>';
+    html += '</div>';
+  }
+  return html;
+}
+
+function selectFeedbackType(el) {
+  var parent = el.parentElement;
+  var items = parent.querySelectorAll('.feedback-type-option');
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.remove('selected');
+  }
+  el.classList.add('selected');
+}
+
+function submitFeedback(el) {
+  var role = el.getAttribute('data-role');
+  var typeContainer, contentEl, phoneEl;
+  
+  if (role === 'teacher') {
+    typeContainer = document.getElementById('feedbackTypeTeacher');
+    contentEl = document.getElementById('feedbackContentTeacher');
+    phoneEl = document.getElementById('feedbackPhoneTeacher');
+  } else {
+    typeContainer = document.getElementById('feedbackTypeParent');
+    contentEl = document.getElementById('feedbackContentParent');
+    phoneEl = document.getElementById('feedbackPhoneParent');
+  }
+  
+  var selectedType = typeContainer.querySelector('.feedback-type-option.selected');
+  var type = selectedType ? selectedType.getAttribute('data-type') : 'other';
+  var content = contentEl.value.trim();
+  
+  if (!content) {
+    showToast('请输入反馈内容');
+    return;
+  }
+  
+  var data = loadData();
+  if (!data.feedback) data.feedback = [];
+  
+  var now = new Date();
+  var createdAt = now.getFullYear() + '-' + 
+    ('0' + (now.getMonth() + 1)).slice(-2) + '-' + 
+    ('0' + now.getDate()).slice(-2) + 'T' +
+    ('0' + now.getHours()).slice(-2) + ':' + 
+    ('0' + now.getMinutes()).slice(-2) + ':' +
+    ('0' + now.getSeconds()).slice(-2);
+  
+  data.feedback.push({
+    id: genId(),
+    userId: currentUser.id,
+    userRole: currentUser.role,
+    phone: phoneEl.value || currentUser.phone || '',
+    type: type,
+    content: content,
+    status: 'pending',
+    createdAt: createdAt
+  });
+  
+  saveData(data);
+  autoSyncUpload(data);
+  
+  // Clear form
+  contentEl.value = '';
+  
+  showToast('感谢反馈，管理员会尽快处理');
+  
+  // Refresh the list
+  if (role === 'teacher') {
+    renderTeacherFeedback(data);
+  } else {
+    renderParentFeedback(data);
+  }
+}
+
+function toggleFeedbackStatus(el) {
+  var id = el.getAttribute('data-id');
+  var currentStatus = el.getAttribute('data-status');
+  var nextStatus;
+  
+  if (currentStatus === 'pending') {
+    nextStatus = 'replied';
+  } else if (currentStatus === 'replied') {
+    nextStatus = 'closed';
+  } else {
+    nextStatus = 'pending';
+  }
+  
+  var data = loadData();
+  if (!data.feedback) return;
+  
+  for (var i = 0; i < data.feedback.length; i++) {
+    if (data.feedback[i].id === id) {
+      data.feedback[i].status = nextStatus;
+      break;
+    }
+  }
+  
+  saveData(data);
+  autoSyncUpload(data);
+  renderAdminFeedback(data);
+  
+  var statusLabels = {pending: '待处理', replied: '已回复', closed: '已关闭'};
+  showToast('状态已更新为：' + statusLabels[nextStatus]);
+}
+
+function filterFeedback(el) {
+  var items = document.querySelectorAll('.feedback-filter-item');
+  for (var i = 0; i < items.length; i++) {
+    items[i].classList.remove('selected');
+  }
+  el.classList.add('selected');
+  var data = loadData();
+  renderAdminFeedback(data);
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
 
 
 function goBack() {
@@ -35749,6 +36266,13 @@ var actionRoutes = {
 
 
 
+  selectFeedbackType: function(el) { selectFeedbackType(el); },
+
+  submitFeedback: function(el) { submitFeedback(el); },
+
+  toggleFeedbackStatus: function(el) { toggleFeedbackStatus(el); },
+
+  filterFeedback: function(el) { filterFeedback(el); },
 
 
 
