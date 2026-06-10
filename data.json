@@ -282,6 +282,17 @@
       "grade": "",
       "subject": "",
       "active": true
+    },
+    {
+      "id": "id_1781102257488_ne42iv",
+      "teacherId": "id_1781098524009_0cqn2q",
+      "name": "高三历史",
+      "price": 400,
+      "duration": 150,
+      "desc": "",
+      "grade": "",
+      "subject": "",
+      "active": true
     }
   ],
   "schedules": [],
