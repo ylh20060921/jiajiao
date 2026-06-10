@@ -8641,9 +8641,27 @@ a{text-decoration:none;color:inherit}
 
 
 
+.teacher-filter-row {
+
+  display:flex;
+
+  gap:8px;
+
+  margin-bottom:10px;
+
+  align-items:stretch;
+
+}
+
+
+
+
+
+
+
 .teacher-filter-select {
 
-  width:100%;
+  flex:1;
 
   padding:8px 12px;
 
@@ -8657,7 +8675,45 @@ a{text-decoration:none;color:inherit}
 
   font-size:14px;
 
-  margin-bottom:10px;
+}
+
+
+
+
+
+
+
+.teacher-filter-btn {
+
+  padding:8px 18px;
+
+  border-radius:8px;
+
+  border:1px solid var(--accent-orange);
+
+  background:var(--accent-orange);
+
+  color:#fff;
+
+  font-size:14px;
+
+  cursor:pointer;
+
+  white-space:nowrap;
+
+  transition:opacity 0.2s;
+
+}
+
+
+
+
+
+
+
+.teacher-filter-btn:hover {
+
+  opacity:0.85;
 
 }
 </style>
@@ -13590,7 +13646,15 @@ a{text-decoration:none;color:inherit}
 
 
 
-      <select class="teacher-filter-select" id="pTeacherFilter" data-action="filterPAllCoursesByTeacher">
+      <div class="teacher-filter-row">
+
+
+
+
+
+
+
+      <select class="teacher-filter-select" id="pTeacherFilter">
 
 
 
@@ -13614,7 +13678,23 @@ a{text-decoration:none;color:inherit}
 
 
 
-      <div id="pAllCourses"></div>
+      <button class="teacher-filter-btn" data-action="confirmTeacherFilter">确定</button>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <div id="pAllCourses"></div>
 
 
 
@@ -37724,7 +37804,7 @@ var actionRoutes = {
 
 
 
-  filterPAllCoursesByTeacher: function(el) { var data = loadData(); renderPAllCourses(data); },
+  confirmTeacherFilter: function() { var data = loadData(); renderPAllCourses(data); },
 
 
 
