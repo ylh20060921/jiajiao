@@ -8,11 +8,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v4.3</title>
+<title>家教管理助手 v4.4</title>
 
 <style>
 
-/* ===== 暗黑科技风 v4.3（深色默认）===== */
+/* ===== 暗黑科技风 v4.4（深色默认）===== */
 
 :root {
 
@@ -76,7 +76,7 @@
 
 
 
-/* ===== 浅色主题 v4.3 ===== */
+/* ===== 浅色主题 v4.4 ===== */
 
 [data-theme="light"] {
 
@@ -1541,6 +1541,15 @@ a{text-decoration:none;color:inherit}
 .status-paid{background:rgba(76,175,80,0.12);color:#81C784;border:1px solid rgba(76,175,80,0.2)}
 
 .status-unpaid{background:rgba(255,152,0,0.12);color:#FFB74D;border:1px solid rgba(255,152,0,0.2)}
+.status-pending{background:rgba(255,152,0,0.12);color:#FFB74D;border:1px solid rgba(255,152,0,0.2)}
+.status-confirmed{background:rgba(76,175,80,0.12);color:#81C784;border:1px solid rgba(76,175,80,0.2)}
+.status-cancelled{background:rgba(255,82,82,0.12);color:#EF9A9A;border:1px solid rgba(255,82,82,0.2)}
+.countdown-timer{font-size:13px;font-weight:600;color:var(--accent-orange);margin-left:8px;font-variant-numeric:tabular-nums}
+.countdown-expired{color:#EF5350 !important}
+.confirm-pay-btn{padding:8px 18px;border-radius:var(--radius-capsule);border:none;background:linear-gradient(135deg,#4CAF50,#66BB6A);color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:all var(--transition-normal)}
+.confirm-pay-btn:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(76,175,80,0.35)}
+.order-bottom-status{display:flex;justify-content:space-between;align-items:center;margin-top:8px;padding-top:8px;border-top:1px solid var(--border)}
+.order-left-info{display:flex;align-items:center;gap:10px}
 
 
 
@@ -1996,7 +2005,7 @@ a{text-decoration:none;color:inherit}
 
 
 
-/* ===== 浅色主题额外覆盖 v4.3 ===== */
+/* ===== 浅色主题额外覆盖 v4.4 ===== */
 
 [data-theme="light"] .login-form,
 
@@ -2179,7 +2188,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v4.3</div>
+      <div class="logo-text">家教管理助手 v4.4</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -3135,6 +3144,8 @@ a{text-decoration:none;color:inherit}
 
       <div class="filter-item" id="orderFilterUnpaid" data-action="filterOrders" data-action-param="unpaid">待支付</div>
 
+      <div class="filter-item" id="orderFilterCancelled" data-action="filterOrders" data-action-param="cancelled">已取消</div>
+
     </div>
 
     <div id="teacherOrderList"></div>
@@ -3231,7 +3242,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.3</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.4</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -3981,6 +3992,10 @@ function showPage(pageId) {
 
   var data = loadData();
 
+  // 订单超时检查（在渲染前）
+  stopOrderCountdown();
+  data = cancelExpiredOrders(data);
+
   if (pageId === 'page-admin-index') renderAdminDashboard(data);
 
   if (pageId === 'page-admin-add-teacher') renderAddTeacherList(data);
@@ -4009,6 +4024,11 @@ function showPage(pageId) {
   if (pageId === 'page-parent-course' && currentUser && currentUser.id) renderParentCourses(data);
 
   if (pageId === 'page-parent-info' && currentUser && currentUser.id) renderParentInfo(data);
+
+  // 启动倒计时
+  if (currentUser && (currentUser.role === 'teacher' || currentUser.role === 'parent')) {
+    startOrderCountdown();
+  }
 
   window.scrollTo(0, 0);
 
@@ -6640,13 +6660,17 @@ function renderTeacherOrders(data) {
 
   items.sort(function(a, b) { return (b.createTime || '') > (a.createTime || '') ? 1 : -1; });
 
-  if (currentOrderFilter === 'paid') items = items.filter(function(o) { return o.paid; });
+  if (currentOrderFilter === 'paid') items = items.filter(function(o) { return o.status === 'confirmed' || o.paid; });
 
-  if (currentOrderFilter === 'unpaid') items = items.filter(function(o) { return !o.paid; });
+  if (currentOrderFilter === 'unpaid') items = items.filter(function(o) { return o.status === 'pending' || (!o.status && !o.paid); });
+
+  if (currentOrderFilter === 'cancelled') items = items.filter(function(o) { return o.status === 'cancelled'; });
 
   if (items.length === 0) {
 
-    list.innerHTML = '<div class="empty-state"><div class="empty-text">暂无订单</div></div>';
+    var emptyMsg = currentOrderFilter === 'cancelled' ? '暂无已取消订单' : '暂无订单';
+
+    list.innerHTML = '<div class="empty-state"><div class="empty-text">' + emptyMsg + '</div></div>';
 
     return;
 
@@ -6664,13 +6688,19 @@ function renderTeacherOrders(data) {
 
     var cName = getCourseName(data, o.courseId);
 
+    var st = o.status || (o.paid ? 'confirmed' : 'pending');
+
+    var stLabel = st === 'confirmed' ? '已确认' : (st === 'cancelled' ? '已取消' : '待确认');
+
+    var stClass = st === 'confirmed' ? 'status-confirmed' : (st === 'cancelled' ? 'status-cancelled' : 'status-pending');
+
     html += '<div class="order-card">'
 
       + '<div class="order-top">'
 
       + '<span class="order-course">' + esc(cName) + '</span>'
 
-      + '<span class="order-status ' + (o.paid ? 'status-paid' : 'status-unpaid') + '">' + (o.paid ? '已支付' : '待支付') + '</span>'
+      + '<span class="order-status ' + stClass + '">' + stLabel + '</span>'
 
       + '</div>'
 
@@ -6684,17 +6714,31 @@ function renderTeacherOrders(data) {
 
       + '</div>'
 
-      + '<div class="order-bottom">'
+      + '<div class="order-bottom-status">'
 
-      + '<span class="order-meta">订单号：' + o.id + '</span>'
+      + '<div class="order-left-info">'
 
-      + '<span class="order-pay-toggle ' + (o.paid ? 'paid' : 'unpaid') + '" data-action="toggleOrderPay" data-action-param="' + o.id + '">'
+      + '<span class="order-meta">订单号：' + o.id + '</span>';
 
-      + (o.paid ? '标记未付' : '标记已付')
+    if (st === 'pending') {
 
-      + '</span>'
+      var cd = getCountdownStr(o.createdAt);
 
-      + '</div>'
+      var expiredClass = cd === '00:00' ? ' countdown-expired' : '';
+
+      html += '<span class="countdown-timer' + expiredClass + '" data-order-id="' + o.id + '" data-created-at="' + (o.createdAt || 0) + '">' + cd + '</span>';
+
+    }
+
+    html += '</div>';
+
+    if (st === 'pending') {
+
+      html += '<button class="confirm-pay-btn" data-action="confirmOrderPayment" data-action-param="' + o.id + '">确认支付</button>';
+
+    }
+
+    html += '</div>'
 
       + '</div>';
 
@@ -6706,7 +6750,7 @@ function renderTeacherOrders(data) {
 
 
 
-function toggleOrderPay(el) {
+function confirmOrderPayment(el) {
 
   var id = el.getAttribute('data-action-param');
 
@@ -6716,7 +6760,9 @@ function toggleOrderPay(el) {
 
     if (data.orders[i].id === id) {
 
-      data.orders[i].paid = !data.orders[i].paid;
+      data.orders[i].paid = true;
+
+      data.orders[i].status = 'confirmed';
 
       break;
 
@@ -6725,6 +6771,8 @@ function toggleOrderPay(el) {
   }
 
   saveData(data);
+
+  showToast('已确认收款，订单生效');
 
   renderTeacherOrders(data);
 
@@ -6735,6 +6783,88 @@ function toggleOrderPay(el) {
   renderTeacherSchedules(data);
 
 }
+
+// ===== 订单超时自动取消 =====
+var ORDER_TIMEOUT_MS = 30 * 60 * 1000;
+var orderCountdownInterval = null;
+
+function autoCancelOrder(data, orderId) {
+  for (var i = 0; i < data.orders.length; i++) {
+    if (data.orders[i].id === orderId && data.orders[i].status === 'pending') {
+      data.orders[i].status = 'cancelled';
+      data.orders[i].paid = false;
+      break;
+    }
+  }
+  if (data.schedules) {
+    data.schedules = data.schedules.filter(function(s) { return s.orderId !== orderId; });
+  }
+  return data;
+}
+
+function cancelExpiredOrders(data) {
+  if (!data.orders) return data;
+  var now = Date.now(), changed = false;
+  for (var i = 0; i < data.orders.length; i++) {
+    var o = data.orders[i];
+    if (o.status === 'pending' && o.createdAt && (now - o.createdAt) >= ORDER_TIMEOUT_MS) {
+      autoCancelOrder(data, o.id);
+      changed = true;
+    }
+  }
+  if (changed) { saveData(data); }
+  return data;
+}
+
+function getCountdownStr(createdAt) {
+  if (!createdAt) return '--:--';
+  var remaining = ORDER_TIMEOUT_MS - (Date.now() - createdAt);
+  if (remaining <= 0) return '00:00';
+  var m = Math.floor(remaining / 60000);
+  var s = Math.floor((remaining % 60000) / 1000);
+  return (m < 10 ? '0' + m : m) + ':' + (s < 10 ? '0' + s : s);
+}
+
+function startOrderCountdown() {
+  stopOrderCountdown();
+  orderCountdownInterval = setInterval(function() {
+    var data = loadData(), changed = false;
+    if (data.orders) {
+      for (var i = 0; i < data.orders.length; i++) {
+        if (data.orders[i].status === 'pending' && data.orders[i].createdAt &&
+            (Date.now() - data.orders[i].createdAt) >= ORDER_TIMEOUT_MS) {
+          autoCancelOrder(data, data.orders[i].id);
+          changed = true;
+        }
+      }
+    }
+    if (changed) { saveData(data); }
+    var countdowns = document.querySelectorAll('.countdown-timer');
+    for (var j = 0; j < countdowns.length; j++) {
+      var el = countdowns[j];
+      var createdAt = parseInt(el.getAttribute('data-created-at')) || 0;
+      if (createdAt) {
+        var str = getCountdownStr(createdAt);
+        el.textContent = str;
+        if (str === '00:00') { el.classList.add('countdown-expired'); }
+      }
+    }
+    if (changed) {
+      var refreshed = loadData();
+      if (currentUser && currentUser.role === 'teacher') {
+        renderTeacherOrders(refreshed); renderTeacherIncomes(refreshed); renderTeacherSchedules(refreshed);
+      }
+      if (currentUser && currentUser.role === 'parent') {
+        renderParentCourses(refreshed); renderParentIndex(refreshed);
+      }
+    }
+  }, 1000);
+}
+
+function stopOrderCountdown() {
+  if (orderCountdownInterval) { clearInterval(orderCountdownInterval); orderCountdownInterval = null; }
+}
+
 
 
 
@@ -6750,11 +6880,15 @@ function filterOrders(el) {
 
   var fu = document.getElementById('orderFilterUnpaid');
 
+  var fc = document.getElementById('orderFilterCancelled');
+
   if (fa) fa.classList.remove('active');
 
   if (fp) fp.classList.remove('active');
 
   if (fu) fu.classList.remove('active');
+
+  if (fc) fc.classList.remove('active');
 
   el.classList.add('active');
 
@@ -6902,7 +7036,8 @@ function renderParentIndex(data) {
 
         courseCount++;
 
-        if (!data.orders[i].paid) unpaidCount++;
+        var ost = data.orders[i].status || (data.orders[i].paid ? 'confirmed' : 'pending');
+        if (ost === 'pending') unpaidCount++;
 
       }
 
@@ -7022,7 +7157,7 @@ function renderParentCourses(data) {
 
   if (!unpaidList || !scheduleList) return;
 
-  var unpaid = [], paid = [];
+  var pending = [], confirmed = [], cancelled = [];
 
   if (data.orders) {
 
@@ -7030,9 +7165,13 @@ function renderParentCourses(data) {
 
       if (data.orders[i].parentId === currentUser.id) {
 
-        if (data.orders[i].paid) paid.push(data.orders[i]);
+        var st = data.orders[i].status || (data.orders[i].paid ? 'confirmed' : 'pending');
 
-        else unpaid.push(data.orders[i]);
+        if (st === 'cancelled') cancelled.push(data.orders[i]);
+
+        else if (st === 'confirmed') confirmed.push(data.orders[i]);
+
+        else pending.push(data.orders[i]);
 
       }
 
@@ -7040,19 +7179,23 @@ function renderParentCourses(data) {
 
   }
 
-  if (unpaid.length === 0) {
+  if (pending.length === 0) {
 
     unpaidList.innerHTML = '';
 
   } else {
 
-    var html = '<div style="font-size:14px;font-weight:600;color:#FF9800;margin-bottom:8px">待支付（' + unpaid.length + '）</div>';
+    var html = '<div style="font-size:14px;font-weight:600;color:#FF9800;margin-bottom:8px">待确认（' + pending.length + '）</div>';
 
-    for (var i = 0; i < unpaid.length; i++) {
+    for (var i = 0; i < pending.length; i++) {
 
-      var o = unpaid[i];
+      var o = pending[i];
 
       var cName = getCourseName(data, o.courseId);
+
+      var cd = getCountdownStr(o.createdAt);
+
+      var expiredClass = cd === '00:00' ? ' countdown-expired' : '';
 
       html += '<div class="unpaid-card card">'
 
@@ -7060,7 +7203,7 @@ function renderParentCourses(data) {
 
         + '<div>'
 
-        + '<div class="unpaid-course">' + esc(cName) + '</div>'
+        + '<div class="unpaid-course">' + esc(cName) + '<span class="countdown-timer' + expiredClass + '" data-order-id="' + o.id + '" data-created-at="' + (o.createdAt || 0) + '" style="font-size:12px">' + cd + '</span></div>'
 
         + '<div class="unpaid-meta">报名日期：' + (o.createTime || '-') + '</div>'
 
@@ -7094,55 +7237,97 @@ function renderParentCourses(data) {
 
   schItems.sort(function(a, b) { return a.date > b.date ? 1 : -1; });
 
-  if (schItems.length === 0) {
+  var hasContent = schItems.length > 0 || confirmed.length > 0 || cancelled.length > 0;
+
+  if (!hasContent) {
 
     scheduleList.innerHTML = '';
 
   } else {
 
-    var html2 = '<div style="font-size:14px;font-weight:600;color:#4A90D9;margin-bottom:8px">已排课程</div>';
+    var html2 = '';
 
-    var lastDate = '';
+    if (confirmed.length > 0) {
 
-    for (var i = 0; i < schItems.length; i++) {
+      html2 += '<div style="font-size:14px;font-weight:600;color:#4CAF50;margin-bottom:8px">已确认（' + confirmed.length + '）</div>';
 
-      var s = schItems[i];
+      for (var i = 0; i < confirmed.length; i++) {
 
-      if (s.date !== lastDate) {
+        var o2 = confirmed[i];
 
-        if (lastDate !== '') html2 += '</div>';
+        var cName2 = getCourseName(data, o2.courseId);
 
-        html2 += '<div style="margin-top:10px"><span style="font-size:13px;color:var(--text-secondary)">' + s.date + '</span></div><div>';
+        html2 += '<div class="card" style="margin-bottom:6px;padding:10px;opacity:0.85">'
 
-        lastDate = s.date;
+          + '<div style="font-weight:600;color:#81C784">' + esc(cName2) + '</div>'
+
+          + '<div style="font-size:12px;color:var(--text-secondary)">¥' + (o2.amount || 0) + ' · 已确认</div>'
+
+          + '</div>';
 
       }
 
-      var cName2 = getCourseName(data, s.courseId);
+    }
 
-      html2 += '<div class="card" style="margin-bottom:6px;padding:10px">'
+    if (cancelled.length > 0) {
 
-        + '<div style="font-weight:600">' + (s.timeSlot || '-') + '</div>'
+      html2 += '<div style="font-size:14px;font-weight:600;color:#EF5350;margin-bottom:8px;margin-top:10px">已取消（' + cancelled.length + '）</div>';
 
-        + '<div style="font-size:13px;color:var(--text-secondary);margin-top:3px">课程：' + esc(cName2) + '</div>'
+      for (var i = 0; i < cancelled.length; i++) {
 
-        + '</div>';
+        var o3 = cancelled[i];
+
+        var cName3 = getCourseName(data, o3.courseId);
+
+        html2 += '<div class="card" style="margin-bottom:6px;padding:10px;opacity:0.6">'
+
+          + '<div style="font-weight:600;color:#EF9A9A">' + esc(cName3) + '</div>'
+
+          + '<div style="font-size:12px;color:var(--text-secondary)">¥' + (o3.amount || 0) + ' · 已取消</div>'
+
+          + '</div>';
+
+      }
 
     }
 
-    if (lastDate !== '') html2 += '</div>';
+    if (schItems.length > 0) {
+
+      html2 += '<div style="font-size:14px;font-weight:600;color:#4A90D9;margin-bottom:8px;margin-top:10px">已排课程</div>';
+
+      var lastDate = '';
+
+      for (var i = 0; i < schItems.length; i++) {
+
+        var s = schItems[i];
+
+        if (s.date !== lastDate) {
+
+          if (lastDate !== '') html2 += '</div>';
+
+          html2 += '<div style="margin-top:10px"><span style="font-size:13px;color:var(--text-secondary)">' + s.date + '</span></div><div>';
+
+          lastDate = s.date;
+
+        }
+
+        var cNameS = getCourseName(data, s.courseId);
+
+        html2 += '<div class="card" style="margin-bottom:6px;padding:10px">'
+
+          + '<div style="font-weight:600">' + (s.timeSlot || '-') + '</div>'
+
+          + '<div style="font-size:13px;color:var(--text-secondary)">' + esc(cNameS) + '</div>'
+
+          + '</div>';
+
+      }
+
+      if (schItems.length > 0) html2 += '</div>';
+
+    }
 
     scheduleList.innerHTML = html2;
-
-  }
-
-  if (unpaid.length === 0 && schItems.length === 0) {
-
-    if (empty) empty.style.display = 'block';
-
-  } else {
-
-    if (empty) empty.style.display = 'none';
 
   }
 
@@ -7346,15 +7531,18 @@ function submitEnroll() {
       }
       totalFee += c.price;
       createdCount++;
+      var orderId = genId();
       data.orders.push({
-        id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
+        id: orderId, teacherId: c.teacherId, parentId: currentUser.id,
         courseId: c.id, amount: c.price, paid: false, teacherConfirmed: true,
+        status: 'pending', createdAt: Date.now(),
+        timeSlots: [{date: selectedDates[di], timeSlot: selectedSlots[si]}],
         createTime: formatDate(new Date())
       });
       data.schedules.push({
         id: genId(), teacherId: c.teacherId, parentId: currentUser.id,
         courseId: c.id, date: selectedDates[di], timeSlot: selectedSlots[si],
-        price: c.price, createTime: new Date().toISOString()
+        price: c.price, orderId: orderId, createTime: new Date().toISOString()
       });
     }
   }
@@ -7391,6 +7579,8 @@ function submitEnroll() {
   saveData(data);
 
   showToastSuccess(msg);
+
+  showToast('订单已保留30分钟，请及时联系老师完成付款，超时订单将自动取消');
 
   showPage('page-parent-course');
 
@@ -7763,6 +7953,8 @@ function confirmPay() {
     if (data.orders[i].id === pendingPayOrderId) {
 
       data.orders[i].paid = true;
+
+      data.orders[i].status = 'confirmed';
 
       break;
 
@@ -8696,7 +8888,7 @@ var actionRoutes = {
 
   deleteSchedule: function(el) { deleteSchedule(el); },
 
-  toggleOrderPay: function(el) { toggleOrderPay(el); },
+  confirmOrderPayment: function(el) { confirmOrderPayment(el); },
 
   filterOrders: function(el) { filterOrders(el); },
 
@@ -8819,7 +9011,7 @@ init();
 
 <script>
 
-/* ===== 主题切换 v4.3 ===== */
+/* ===== 主题切换 v4.4 ===== */
 
 (function(){
 
