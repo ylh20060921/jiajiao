@@ -8716,6 +8716,74 @@ a{text-decoration:none;color:inherit}
   opacity:0.85;
 
 }
+
+
+/* ===== 浅色模式文字颜色修复 ===== */
+
+[data-theme="light"] .tag-blue,
+[data-theme="light"] .teacher-tag { color:#1565C0; }
+
+[data-theme="light"] .tag-green,
+[data-theme="light"] .btn-approve,
+[data-theme="light"] .status-paid,
+[data-theme="light"] .status-confirmed,
+[data-theme="light"] .pay-toggle-btn.paid,
+[data-theme="light"] .order-pay-toggle.paid,
+[data-theme="light"] .sync-status.synced,
+[data-theme="light"] .feedback-type-badge.feature,
+[data-theme="light"] .feedback-status-badge.replied,
+[data-theme="light"] .status-badge.confirmed,
+[data-theme="light"] .income-highlight { color:#2E7D32; }
+
+[data-theme="light"] .tag-orange,
+[data-theme="light"] .btn-reject,
+[data-theme="light"] .status-unpaid,
+[data-theme="light"] .status-pending,
+[data-theme="light"] .pay-toggle-btn.unpaid,
+[data-theme="light"] .order-pay-toggle.unpaid,
+[data-theme="light"] .sync-status.syncing,
+[data-theme="light"] .feedback-status-badge.pending,
+[data-theme="light"] .status-badge.pending { color:#E65100; }
+
+[data-theme="light"] .tag-red,
+[data-theme="light"] .logout-btn,
+[data-theme="light"] .btn-delete,
+[data-theme="light"] .action-btn.danger,
+[data-theme="light"] .action-link.danger,
+[data-theme="light"] .status-cancelled,
+[data-theme="light"] .sync-status.failed,
+[data-theme="light"] .sync-btn-danger,
+[data-theme="light"] .enroll-calendar-month .cal-weekdays span.weekend,
+[data-theme="light"] .enroll-calendar-month .cal-day.weekend,
+[data-theme="light"] .status-badge.cancelled { color:#C62828; }
+
+[data-theme="light"] .filter-item.active,
+[data-theme="light"] .tab-item.active .tab-text,
+[data-theme="light"] .role-tab.active .role-label,
+[data-theme="light"] .admin-link,
+[data-theme="light"] .tab-item-nav.active,
+[data-theme="light"] .sch-day-today .sch-day-num,
+[data-theme="light"] .sch-today-title { color:#6D28D9; }
+
+[data-theme="light"] .course-price,
+[data-theme="light"] .sch-price,
+[data-theme="light"] .order-amount,
+[data-theme="light"] .income-amount,
+[data-theme="light"] .fee-total-value,
+[data-theme="light"] .unpaid-amount,
+[data-theme="light"] .pay-amount { color:#C62828; }
+
+[data-theme="light"] .countdown-expired,
+[data-theme="light"] .feedback-type-badge.bug,
+[data-theme="light"] .feedback-delete-btn { color:#C62828; }
+
+[data-theme="light"] .sch-event-time { color:#0077AA; }
+
+[data-theme="light"] .feedback-type-badge.usage { color:#1565C0; }
+
+[data-theme="light"] .feedback-type-badge.other,
+[data-theme="light"] .feedback-status-badge.closed { color:#757575; }
+
 </style>
 
 
@@ -19412,7 +19480,7 @@ function renderAdminTeacherData(data) {
 
 
 
-      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#4CAF50">' + s.confirmedOrders + '</div><div class="tdc-stat-label"><span class="status-badge confirmed">已确认</span></div></div>'
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#2E7D32">' + s.confirmedOrders + '</div><div class="tdc-stat-label"><span class="status-badge confirmed">已确认</span></div></div>'
 
 
 
@@ -19420,7 +19488,7 @@ function renderAdminTeacherData(data) {
 
 
 
-      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#FF9800">' + s.pendingOrders + '</div><div class="tdc-stat-label"><span class="status-badge pending">待确认</span></div></div>'
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#E65100">' + s.pendingOrders + '</div><div class="tdc-stat-label"><span class="status-badge pending">待确认</span></div></div>'
 
 
 
@@ -19428,7 +19496,7 @@ function renderAdminTeacherData(data) {
 
 
 
-      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#F44336">' + s.cancelledOrders + '</div><div class="tdc-stat-label"><span class="status-badge cancelled">已取消</span></div></div>'
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#C62828">' + s.cancelledOrders + '</div><div class="tdc-stat-label"><span class="status-badge cancelled">已取消</span></div></div>'
 
 
 
@@ -19470,7 +19538,7 @@ function renderAdminTeacherData(data) {
 
 
 
-    + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#4CAF50">&yen;' + totalAllIncome + '</div><div class="tdc-stat-label">全平台总收入</div></div>'
+    + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#2E7D32">&yen;' + totalAllIncome + '</div><div class="tdc-stat-label">全平台总收入</div></div>'
 
 
 
@@ -24368,7 +24436,7 @@ function renderReceiptList(data, courseId) {
 
 
 
-      + '<div class="order-row"><span class="order-label">金额</span><span class="order-value" style="color:#FF5252;font-weight:600">¥' + (o.amount || 0) + '</span></div>'
+      + '<div class="order-row"><span class="order-label">金额</span><span class="order-value" style="color:#C62828;font-weight:600">¥' + (o.amount || 0) + '</span></div>'
 
 
 
@@ -30468,7 +30536,7 @@ function renderPAllCourses(data) {
 
 
 
-      + '<div style="font-size:18px;font-weight:700;color:#FF5252">¥' + c.price + '</div>'
+      + '<div style="font-size:18px;font-weight:700;color:#C62828">¥' + c.price + '</div>'
 
 
 
@@ -30804,7 +30872,7 @@ function renderParentCourses(data) {
 
 
 
-    var html = '<div style="font-size:14px;font-weight:600;color:#FF9800;margin-bottom:8px">待确认（' + pending.length + '）</div>';
+    var html = '<div style="font-size:14px;font-weight:600;color:#E65100;margin-bottom:8px">待确认（' + pending.length + '）</div>';
 
 
 
@@ -31060,7 +31128,7 @@ function renderParentCourses(data) {
 
 
 
-      html2 += '<div style="font-size:14px;font-weight:600;color:#4CAF50;margin-bottom:8px">已确认（' + confirmed.length + '）</div>';
+      html2 += '<div style="font-size:14px;font-weight:600;color:#2E7D32;margin-bottom:8px">已确认（' + confirmed.length + '）</div>';
 
 
 
@@ -31100,7 +31168,7 @@ function renderParentCourses(data) {
 
 
 
-          + '<div style="font-weight:600;color:#81C784">' + esc(cName2) + '</div>'
+          + '<div style="font-weight:600;color:#2E7D32">' + esc(cName2) + '</div>'
 
 
 
@@ -31148,7 +31216,7 @@ function renderParentCourses(data) {
 
 
 
-      html2 += '<div style="font-size:14px;font-weight:600;color:#EF5350;margin-bottom:8px;margin-top:10px">已取消（' + cancelled.length + '）</div>';
+      html2 += '<div style="font-size:14px;font-weight:600;color:#C62828;margin-bottom:8px;margin-top:10px">已取消（' + cancelled.length + '）</div>';
 
 
 
@@ -31188,7 +31256,7 @@ function renderParentCourses(data) {
 
 
 
-          + '<div style="font-weight:600;color:#EF9A9A">' + esc(cName3) + '</div>'
+          + '<div style="font-weight:600;color:#C62828">' + esc(cName3) + '</div>'
 
 
 
@@ -31236,7 +31304,7 @@ function renderParentCourses(data) {
 
 
 
-      html2 += '<div style="font-size:14px;font-weight:600;color:#4A90D9;margin-bottom:8px;margin-top:10px">已排课程</div>';
+      html2 += '<div style="font-size:14px;font-weight:600;color:#1976D2;margin-bottom:8px;margin-top:10px">已排课程</div>';
 
 
 
