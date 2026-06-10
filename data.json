@@ -167,9 +167,10 @@
       "parentId": "id_1779969596310_i3qs0s",
       "courseId": "id_1780227044461_cdxvaf",
       "amount": 260,
-      "paid": false,
+      "paid": true,
       "teacherConfirmed": true,
-      "createTime": "2026年6月10日"
+      "createTime": "2026年6月10日",
+      "status": "confirmed"
     }
   ],
   "admins": [],
