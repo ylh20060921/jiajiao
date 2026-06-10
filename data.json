@@ -117,6 +117,17 @@
       "grade": "",
       "subject": "",
       "active": true
+    },
+    {
+      "id": "id_1781099259606_o9ozov",
+      "teacherId": "id_1781086492410_lxidr9",
+      "name": "高三物理",
+      "price": 400,
+      "duration": 150,
+      "desc": "粤教版高中物理高考总复习",
+      "grade": "",
+      "subject": "",
+      "active": true
     }
   ],
   "schedules": [],
