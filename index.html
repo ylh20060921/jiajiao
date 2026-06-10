@@ -7362,6 +7362,8 @@ function renderEnrollPage(data, courseId) {
 
     + '<span class="header-tag">教师：' + esc(getTeacherName(data, c.teacherId)) + '</span>'
 
+    + '<span class="header-tag" style="color:var(--accent-cyan)">📞 ' + esc(getTeacherPhone(data, c.teacherId)) + '</span>'
+
     + '<span class="header-tag">' + enrollCourseDuration + '分钟/次</span>'
 
     + (c.grade ? '<span class="header-tag">年级：' + esc(c.grade) + '</span>' : '')
@@ -8624,6 +8626,11 @@ function getTeacherById(data, teacherId) {
 
 
 
+function getTeacherPhone(data, teacherId) {
+  var t = getTeacherById(data, teacherId);
+  return t ? (t.phone || '') : '';
+}
+
 function getParentName(data, parentId) {
 
   if (!parentId) return '-';
@@ -8904,6 +8911,8 @@ var actionRoutes = {
   schPrevMonth: function() { schCalMonth--; if (schCalMonth < 0) { schCalMonth = 11; schCalYear--; } renderSchCal(loadData(), schCalYear, schCalMonth); },
 
   schNextMonth: function() { schCalMonth++; if (schCalMonth > 11) { schCalMonth = 0; schCalYear++; } renderSchCal(loadData(), schCalYear, schCalMonth); },
+
+  saveTeacherProfile: function() { saveTeacherProfile(); },
 
   // 全自动同步无需手动操作
 
