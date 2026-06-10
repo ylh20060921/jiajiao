@@ -8,11 +8,11 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>家教管理助手 v4.2</title>
+<title>家教管理助手 v4.3</title>
 
 <style>
 
-/* ===== 暗黑科技风 v4.2（深色默认）===== */
+/* ===== 暗黑科技风 v4.3（深色默认）===== */
 
 :root {
 
@@ -76,7 +76,7 @@
 
 
 
-/* ===== 浅色主题 v4.2 ===== */
+/* ===== 浅色主题 v4.3 ===== */
 
 [data-theme="light"] {
 
@@ -1996,7 +1996,7 @@ a{text-decoration:none;color:inherit}
 
 
 
-/* ===== 浅色主题额外覆盖 v4.2 ===== */
+/* ===== 浅色主题额外覆盖 v4.3 ===== */
 
 [data-theme="light"] .login-form,
 
@@ -2051,6 +2051,38 @@ a{text-decoration:none;color:inherit}
   box-shadow: 0 4px 14px rgba(0,0,0,0.15);
 
 }
+
+
+
+/* ===== 教师个人资料页 ===== */
+.profile-section{margin-bottom:20px}
+.profile-section-title{font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.5px}
+.profile-avatar-wrap{display:flex;align-items:center;gap:16px;margin-bottom:8px}
+.profile-avatar-img{width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid var(--border);background:var(--bg-card)}
+.profile-avatar-placeholder{width:80px;height:80px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:32px;font-weight:700;border:3px solid var(--border)}
+.profile-upload-btn{padding:8px 16px;background:rgba(123,44,191,0.2);border:1px solid rgba(123,44,191,0.4);border-radius:var(--radius-sm);color:var(--accent-purple);font-size:13px;cursor:pointer;transition:all var(--transition-fast)}
+.profile-upload-btn:hover{background:rgba(123,44,191,0.35);border-color:rgba(123,44,191,0.6)}
+.profile-textarea{width:100%;min-height:80px;padding:12px;background:var(--bg-input);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);font-size:14px;font-family:inherit;resize:vertical;transition:border-color var(--transition-fast)}
+.profile-textarea:focus{outline:none;border-color:var(--accent-purple);box-shadow:0 0 0 2px rgba(123,44,191,0.15)}
+.profile-textarea::placeholder{color:var(--text-muted)}
+.profile-save-row{display:flex;justify-content:flex-end;gap:10px;padding-top:8px}
+
+/* ===== 教师风采卡片（家长端） ===== */
+.showcase-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.showcase-card{background:var(--bg-card);border-radius:var(--radius-md);border:1px solid var(--border);overflow:hidden;transition:all var(--transition-normal)}
+.showcase-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px rgba(0,0,0,0.4);border-color:rgba(123,44,191,0.3)}
+.showcase-header{display:flex;align-items:center;gap:14px;padding:16px;background:rgba(123,44,191,0.06);border-bottom:1px solid var(--border)}
+.showcase-avatar{width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid var(--accent-purple);flex-shrink:0}
+.showcase-avatar-fallback{width:64px;height:64px;border-radius:50%;background:var(--gradient-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:26px;font-weight:700;flex-shrink:0;border:3px solid var(--accent-purple)}
+.showcase-name{font-size:17px;font-weight:700;color:var(--text-primary)}
+.showcase-edu{font-size:12px;color:var(--text-muted);margin-top:3px}
+.showcase-body{padding:14px 16px}
+.showcase-bio{font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:10px}
+.showcase-style{font-size:12px;color:var(--text-muted);margin-bottom:10px;padding:8px 10px;background:rgba(0,229,240,0.05);border-radius:var(--radius-sm);border-left:3px solid var(--accent-cyan)}
+.showcase-courses{margin-top:10px}
+.showcase-courses-label{font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.showcase-course-tag{display:inline-block;padding:4px 10px;margin:2px 4px 2px 0;background:rgba(192,132,252,0.12);color:var(--accent-purple);border-radius:12px;font-size:12px;font-weight:500}
+.showcase-empty{grid-column:1/-1;text-align:center;padding:40px 20px;color:var(--text-muted);font-size:14px}
 
 </style>
 
@@ -2160,7 +2192,7 @@ a{text-decoration:none;color:inherit}
 
     <div class="login-header">
 
-      <div class="logo-text">家教管理助手 v4.2</div>
+      <div class="logo-text">家教管理助手 v4.3</div>
 
       <div class="sub-text">让每一堂课都有序进行</div>
 
@@ -3158,6 +3190,85 @@ a{text-decoration:none;color:inherit}
 
 
 
+
+
+<!-- ==================== 教师个人资料 ==================== -->
+
+<div class="page" id="page-teacher-profile">
+
+  <div class="container">
+
+    <div class="page-header">
+
+      <div class="page-title">个人资料</div>
+
+    </div>
+
+    <div class="form-card">
+
+      <div class="profile-section">
+
+        <div class="profile-section-title">个人照片</div>
+
+        <div class="profile-avatar-wrap">
+
+          <div id="profileAvatarArea"></div>
+
+          <div>
+
+            <label class="profile-upload-btn">
+
+              <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handleAvatarUpload(event)"/>
+
+              上传照片
+
+            </label>
+
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">支持 JPG/PNG，建议 1:1 比例</div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="profile-section">
+
+        <div class="profile-section-title">学历 / 院校</div>
+
+        <input class="form-input" type="text" id="profileEducation" placeholder="如：清华大学 数学系 硕士"/>
+
+      </div>
+
+      <div class="profile-section">
+
+        <div class="profile-section-title">特长 / 技能描述</div>
+
+        <textarea class="profile-textarea" id="profileBio" placeholder="如：擅长初中数学、物理，5年家教经验，耐心细致，善于引导学生独立思考..."></textarea>
+
+      </div>
+
+      <div class="profile-section">
+
+        <div class="profile-section-title">教学风格简介</div>
+
+        <textarea class="profile-textarea" id="profileStyle" placeholder="如：采用启发式教学，注重基础概念的理解与应用，因材施教..."></textarea>
+
+      </div>
+
+      <div class="profile-save-row">
+
+        <button class="btn-primary" data-action="saveTeacherProfile">保存资料</button>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+
 <!-- ==================== 家长首页 ==================== -->
 
 <div class="page" id="page-parent-index">
@@ -3208,7 +3319,7 @@ a{text-decoration:none;color:inherit}
 
         <div class="stat-item">
 
-          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.2</div>
+          <div style="font-size:24px;font-weight:700" id="pVersionDisplay">v4.3</div>
 
           <div style="font-size:11px;opacity:0.85">版本</div>
 
@@ -3510,6 +3621,27 @@ a{text-decoration:none;color:inherit}
 
 
 
+
+
+<!-- ==================== 家长端 - 教师风采 ==================== -->
+
+<div class="page" id="page-parent-teachers">
+
+  <div class="container">
+
+    <div class="page-header">
+
+      <div class="page-title">教师风采</div>
+
+    </div>
+
+    <div class="showcase-grid" id="teacherShowcaseGrid"></div>
+
+  </div>
+
+</div>
+
+
 <!-- ==================== 底部标签栏 ==================== -->
 
 <div class="tab-bar" id="tabBarTeacher" style="display:none">
@@ -3562,6 +3694,14 @@ a{text-decoration:none;color:inherit}
 
   </div>
 
+  <div class="tab-item" data-action="navPage" data-target="page-teacher-profile">
+
+    <div class="tab-icon">&#x1F4DD;</div>
+
+    <div class="tab-text">资料</div>
+
+  </div>
+
 </div>
 
 
@@ -3583,6 +3723,16 @@ a{text-decoration:none;color:inherit}
     <div class="tab-text">课程</div>
 
   </div>
+
+  
+  <div class="tab-item" data-action="navPage" data-target="page-parent-teachers">
+
+    <div class="tab-icon">&#x1F468;&#x200D;&#x1F3EB;</div>
+
+    <div class="tab-text">教师</div>
+
+  </div>
+
 
   <div class="tab-item" data-action="navPage" data-target="page-parent-info">
 
@@ -3752,7 +3902,7 @@ function getDefaultData() {
 
     teachers: [
 
-      {id: genId(), phone: 'teacher', name: '演示教师', pwd: '123456', status: 'approved'}
+      {id: genId(), phone: 'teacher', name: '演示教师', pwd: '123456', status: 'approved', avatar: '', bio: '', style: '', education: ''}
 
     ],
 
@@ -3780,7 +3930,167 @@ function saveData(data) {
 
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-  // 全自动同步到 GitHub（静默上传）
+  
+
+// ========== 教师个人资料 ==========
+
+function getTeacherCoursesByTeacher(data, teacherId) {
+  var result = [];
+  if (data.courses) {
+    for (var i = 0; i < data.courses.length; i++) {
+      var c = data.courses[i];
+      if (c.teacherId === teacherId && c.status === 'approved') {
+        result.push(c);
+      }
+    }
+  }
+  return result;
+}
+
+function renderTeacherProfile(data) {
+  if (!currentUser) return;
+  var t = getTeacherById(data, currentUser.id);
+  if (!t) return;
+  
+  var avatarArea = document.getElementById('profileAvatarArea');
+  if (t.avatar && t.avatar.length > 0) {
+    avatarArea.innerHTML = '<img class="profile-avatar-img" src="' + t.avatar + '" alt="头像"/>';
+  } else {
+    avatarArea.innerHTML = '<div class="profile-avatar-placeholder">' + esc(t.name.charAt(0)) + '</div>';
+  }
+  
+  var eduEl = document.getElementById('profileEducation');
+  if (eduEl) eduEl.value = t.education || '';
+  
+  var bioEl = document.getElementById('profileBio');
+  if (bioEl) bioEl.value = t.bio || '';
+  
+  var styleEl = document.getElementById('profileStyle');
+  if (styleEl) styleEl.value = t.style || '';
+}
+
+function handleAvatarUpload(event) {
+  var file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('照片不能超过 2MB'); return; }
+  
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var base64 = e.target.result;
+    // Store in a temporary variable for saving
+    window._pendingAvatar = base64;
+    var avatarArea = document.getElementById('profileAvatarArea');
+    avatarArea.innerHTML = '<img class="profile-avatar-img" src="' + base64 + '" alt="头像"/>';
+    showToast('照片已就绪，请点击"保存资料"');
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveTeacherProfile() {
+  if (!currentUser) return;
+  var data = loadData();
+  var t = null;
+  for (var i = 0; i < data.teachers.length; i++) {
+    if (data.teachers[i].id === currentUser.id) { t = data.teachers[i]; break; }
+  }
+  if (!t) { showToast('未找到教师信息'); return; }
+  
+  // Make sure fields exist
+  if (!t.avatar && t.avatar !== '') t.avatar = '';
+  if (!t.bio && t.bio !== '') t.bio = '';
+  if (!t.style && t.style !== '') t.style = '';
+  if (!t.education && t.education !== '') t.education = '';
+  
+  if (window._pendingAvatar) {
+    t.avatar = window._pendingAvatar;
+    window._pendingAvatar = null;
+  }
+  
+  var eduEl = document.getElementById('profileEducation');
+  if (eduEl) t.education = eduEl.value.trim();
+  
+  var bioEl = document.getElementById('profileBio');
+  if (bioEl) t.bio = bioEl.value.trim();
+  
+  var styleEl = document.getElementById('profileStyle');
+  if (styleEl) t.style = styleEl.value.trim();
+  
+  saveData(data);
+  showToast('个人资料已保存');
+  
+  // Update currentUser too
+  currentUser.avatar = t.avatar;
+  currentUser.bio = t.bio;
+  currentUser.style = t.style;
+  currentUser.education = t.education;
+}
+
+// ========== 家长端 - 教师风采展示 ==========
+
+function renderParentTeachers(data) {
+  var grid = document.getElementById('teacherShowcaseGrid');
+  if (!grid) return;
+  
+  var teachers = data.teachers || [];
+  var approvedTeachers = [];
+  for (var i = 0; i < teachers.length; i++) {
+    if (teachers[i].status === 'approved') {
+      approvedTeachers.push(teachers[i]);
+    }
+  }
+  
+  if (approvedTeachers.length === 0) {
+    grid.innerHTML = '<div class="showcase-empty">暂无教师入驻，敬请期待</div>';
+    return;
+  }
+  
+  var html = '';
+  for (var i = 0; i < approvedTeachers.length; i++) {
+    var t = approvedTeachers[i];
+    var courses = getTeacherCoursesByTeacher(data, t.id);
+    
+    html += '<div class="showcase-card">';
+    
+    // Header: avatar + name + education
+    html += '<div class="showcase-header">';
+    if (t.avatar && t.avatar.length > 0) {
+      html += '<img class="showcase-avatar" src="' + t.avatar + '" alt="' + esc(t.name) + '"/>';
+    } else {
+      html += '<div class="showcase-avatar-fallback">' + esc(t.name.charAt(0)) + '</div>';
+    }
+    html += '<div>';
+    html += '<div class="showcase-name">' + esc(t.name) + '</div>';
+    if (t.education && t.education.length > 0) {
+      html += '<div class="showcase-edu">' + esc(t.education) + '</div>';
+    }
+    html += '</div></div>';
+    
+    // Body: bio, style, courses
+    html += '<div class="showcase-body">';
+    if (t.bio && t.bio.length > 0) {
+      html += '<div class="showcase-bio">' + esc(t.bio) + '</div>';
+    }
+    if (t.style && t.style.length > 0) {
+      html += '<div class="showcase-style">' + esc(t.style) + '</div>';
+    }
+    if (courses.length > 0) {
+      html += '<div class="showcase-courses">';
+      html += '<div class="showcase-courses-label">所授课程</div>';
+      for (var j = 0; j < courses.length; j++) {
+        html += '<span class="showcase-course-tag">' + esc(courses[j].name || courses[j].subject || '课程') + '</span>';
+      }
+      html += '</div>';
+    }
+    html += '</div>';
+    
+    html += '</div>';
+  }
+  
+  grid.innerHTML = html;
+}
+
+
+// 全自动同步到 GitHub（静默上传）
 
   setTimeout(function() { autoSyncUpload(data); }, 500);
 
@@ -3834,6 +4144,11 @@ function showPage(pageId) {
 
   if (pageId === 'page-teacher-income') showTabBar('teacher');
 
+  if (pageId === 'page-teacher-profile') showTabBar('teacher');
+
+  if (pageId === 'page-parent-teachers') showTabBar('parent');
+
+
   if (pageId === 'page-parent-course') showTabBar('parent');
 
   if (pageId === 'page-parent-info') showTabBar('parent');
@@ -3859,6 +4174,11 @@ function showPage(pageId) {
   if (pageId === 'page-teacher-orders' && currentUser && currentUser.id) renderTeacherOrders(data);
 
   if (pageId === 'page-teacher-income' && currentUser && currentUser.id) renderTeacherIncomes(data);
+
+  if (pageId === 'page-teacher-profile' && currentUser && currentUser.id) renderTeacherProfile(data);
+
+  if (pageId === 'page-parent-teachers' && currentUser && currentUser.id) renderParentTeachers(data);
+
 
   if (pageId === 'page-parent-index' && currentUser && currentUser.id) renderParentIndex(data);
 
@@ -8667,7 +8987,7 @@ init();
 
 <script>
 
-/* ===== 主题切换 v4.2 ===== */
+/* ===== 主题切换 v4.3 ===== */
 
 (function(){
 
