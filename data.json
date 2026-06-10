@@ -84,6 +84,17 @@
       "grade": "",
       "subject": "",
       "active": true
+    },
+    {
+      "id": "id_1781099141529_6gfpht",
+      "teacherId": "id_1781086492410_lxidr9",
+      "name": "高一化学",
+      "price": 300,
+      "duration": 150,
+      "desc": "人教版高中化学",
+      "grade": "",
+      "subject": "",
+      "active": true
     }
   ],
   "schedules": [],
