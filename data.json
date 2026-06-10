@@ -12,7 +12,9 @@
       "phone": "13676569191",
       "name": "吴子靖",
       "pwd": "123456",
-      "status": "approved"
+      "status": "approved",
+      "availableStart": 8,
+      "availableEnd": 20
     }
   ],
   "parents": [
