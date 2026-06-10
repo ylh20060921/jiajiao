@@ -29,7 +29,19 @@
       "remark": ""
     }
   ],
-  "courses": [],
+  "courses": [
+    {
+      "id": "id_1781098915598_ww35tl",
+      "teacherId": "id_1781098524009_0cqn2q",
+      "name": "高中政治",
+      "price": 200,
+      "duration": 150,
+      "desc": "",
+      "grade": "",
+      "subject": "",
+      "active": true
+    }
+  ],
   "schedules": [],
   "orders": [],
   "admins": [],
