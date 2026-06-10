@@ -8374,6 +8374,292 @@ a{text-decoration:none;color:inherit}
 .feedback-delete-btn{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:50%;background:rgba(244,67,54,0.1);color:#EF5350;font-size:12px;cursor:pointer;transition:all var(--transition-fast);margin-left:6px}
 .feedback-delete-btn:hover{background:rgba(244,67,54,0.25);transform:scale(1.1)}
 
+
+
+
+
+
+
+
+/* ===== 教师数据表 v1.0 ===== */
+
+
+
+
+
+
+
+.teacher-data-card {
+
+  background:var(--bg-card);
+
+  border-radius:12px;
+
+  padding:16px;
+
+  margin-bottom:12px;
+
+  border:1px solid var(--border);
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-header {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  margin-bottom:10px;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-name {
+
+  font-size:16px;
+
+  font-weight:700;
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-phone {
+
+  font-size:12px;
+
+  color:var(--text-muted);
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-stats {
+
+  display:flex;
+
+  gap:16px;
+
+  flex-wrap:wrap;
+
+  margin-bottom:8px;
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-stat {
+
+  text-align:center;
+
+  min-width:60px;
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-stat-num {
+
+  font-size:18px;
+
+  font-weight:700;
+
+}
+
+
+
+
+
+
+
+.teacher-data-card .tdc-stat-label {
+
+  font-size:11px;
+
+  color:var(--text-muted);
+
+}
+
+
+
+
+
+
+
+.status-badge {
+
+  display:inline-block;
+
+  padding:2px 8px;
+
+  border-radius:10px;
+
+  font-size:11px;
+
+  font-weight:500;
+
+}
+
+
+
+
+
+
+
+.status-badge.pending {
+
+  background:rgba(255,152,0,0.15);
+
+  color:#FF9800;
+
+}
+
+
+
+
+
+
+
+.status-badge.confirmed {
+
+  background:rgba(76,175,80,0.15);
+
+  color:#4CAF50;
+
+}
+
+
+
+
+
+
+
+.status-badge.cancelled {
+
+  background:rgba(244,67,54,0.15);
+
+  color:#F44336;
+
+}
+
+
+
+
+
+
+
+.income-highlight {
+
+  font-weight:700;
+
+  color:#4CAF50;
+
+  font-size:16px;
+
+}
+
+
+
+
+
+
+
+.sort-btn {
+
+  cursor:pointer;
+
+  user-select:none;
+
+  margin:0 4px;
+
+  padding:4px 12px;
+
+  border-radius:6px;
+
+  background:var(--bg-card);
+
+  border:1px solid var(--border);
+
+  color:var(--text-primary);
+
+  font-size:12px;
+
+}
+
+
+
+
+
+
+
+.sort-btn.active {
+
+  background:var(--accent-orange);
+
+  color:#fff;
+
+  border-color:var(--accent-orange);
+
+}
+
+
+
+
+
+
+
+.teacher-filter-select {
+
+  width:100%;
+
+  padding:8px 12px;
+
+  border-radius:8px;
+
+  border:1px solid var(--border);
+
+  background:var(--bg-card);
+
+  color:var(--text-primary);
+
+  font-size:14px;
+
+  margin-bottom:10px;
+
+}
 </style>
 
 
@@ -9808,6 +10094,30 @@ a{text-decoration:none;color:inherit}
 
     <div class="menu-section">
 
+      <div class="section-title">教师数据</div>
+
+      <div class="menu-list">
+
+        <div class="menu-item" data-action="navPage" data-target="page-admin-teacher-data">
+
+          <div class="menu-left">
+
+            <div class="menu-icon">&#x1F4CA;</div>
+
+            <div class="menu-text">教师报名与收入</div>
+
+          </div>
+
+          <div class="menu-arrow">&#x203A;</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="menu-section">
+
       <div class="section-title">用户反馈</div>
 
       <div class="menu-list">
@@ -10889,6 +11199,190 @@ a{text-decoration:none;color:inherit}
 
 
       <button class="btn-secondary" style="margin-top:8px" data-action="closeAdminCourseModal">取消</button>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+  </div>
+
+
+
+
+
+
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- ==================== 管理员教师数据 ==================== -->
+
+
+
+
+
+
+
+<div class="page" id="page-admin-teacher-data">
+
+
+
+
+
+
+
+  <div class="container">
+
+
+
+
+
+
+
+    <div class="page-header">
+
+
+
+
+
+
+
+      <div>
+
+
+
+
+
+
+
+        <div class="header-title">教师报名与收入统计</div>
+
+
+
+
+
+
+
+        <div class="header-desc">各教师课程、订单与收入汇总</div>
+
+
+
+
+
+
+
+      </div>
+
+
+
+
+
+
+
+      <div class="back-btn" data-action="navPage" data-target="page-admin-index">返回后台</div>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+
+
+
+
+
+
+
+      <button class="sort-btn active" data-action="sortTeacherData" data-action-param="income">按收入排序</button>
+
+
+
+
+
+
+
+      <button class="sort-btn" data-action="sortTeacherData" data-action-param="courses">按课程数排序</button>
+
+
+
+
+
+
+
+      <button class="sort-btn" data-action="sortTeacherData" data-action-param="orders">按订单数排序</button>
+
+
+
+
+
+
+
+    </div>
+
+
+
+
+
+
+
+    <div id="adminTeacherDataList"></div>
+
+
+
+
+
+
+
+    <div id="adminTeacherDataEmpty" class="empty-state" style="display:none">
+
+
+
+
+
+
+
+      <div class="empty-icon">&#x1F4CA;</div>
+
+
+
+
+
+
+
+      <div class="empty-text">暂无教师数据</div>
 
 
 
@@ -13089,6 +13583,30 @@ a{text-decoration:none;color:inherit}
 
 
       <div class="card-title" style="text-align:left">全部课程</div>
+
+
+
+
+
+
+
+      <select class="teacher-filter-select" id="pTeacherFilter" data-action="filterPAllCoursesByTeacher">
+
+
+
+
+
+
+
+        <option value="">全部教师</option>
+
+
+
+
+
+
+
+      </select>
 
 
 
@@ -16431,6 +16949,8 @@ function showPage(pageId) {
 
   if (pageId === 'page-admin-feedback') renderAdminFeedback(data);
 
+  if (pageId === 'page-admin-teacher-data') renderAdminTeacherData(data);
+
   // 启动倒计时
 
 
@@ -18191,6 +18711,768 @@ function renderAdminDashboard(data) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* ========== 教师数据统计 ========== */
+
+
+
+
+
+
+
+var adminTeacherDataSortBy = 'income';
+
+
+
+
+
+
+
+function renderAdminTeacherData(data) {
+
+
+
+
+
+
+
+  var list = document.getElementById('adminTeacherDataList');
+
+
+
+
+
+
+
+  var empty = document.getElementById('adminTeacherDataEmpty');
+
+
+
+
+
+
+
+  if (!list) return;
+
+
+
+
+
+
+
+  var teachers = data.teachers || [];
+
+
+
+
+
+
+
+  if (teachers.length === 0) {
+
+
+
+
+
+
+
+    list.innerHTML = '';
+
+
+
+
+
+
+
+    if (empty) empty.style.display = 'block';
+
+
+
+
+
+
+
+    return;
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  if (empty) empty.style.display = 'none';
+
+
+
+
+
+
+
+
+
+  var stats = [];
+
+
+
+
+
+
+
+  for (var i = 0; i < teachers.length; i++) {
+
+
+
+
+
+
+
+    var t = teachers[i];
+
+
+
+
+
+
+
+    var courseCount = 0;
+
+
+
+
+
+
+
+    var pendingOrders = 0, confirmedOrders = 0, cancelledOrders = 0;
+
+
+
+
+
+
+
+    var totalIncome = 0;
+
+
+
+
+
+
+
+
+
+    if (data.courses) {
+
+
+
+
+
+
+
+      for (var j = 0; j < data.courses.length; j++) {
+
+
+
+
+
+
+
+        if (data.courses[j].teacherId === t.id && data.courses[j].active !== false) courseCount++;
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    if (data.orders) {
+
+
+
+
+
+
+
+      for (var k = 0; k < data.orders.length; k++) {
+
+
+
+
+
+
+
+        var o = data.orders[k];
+
+
+
+
+
+
+
+        if (o.teacherId !== t.id) continue;
+
+
+
+
+
+
+
+        var st = o.status || 'pending';
+
+
+
+
+
+
+
+        if (st === 'confirmed') { confirmedOrders++; totalIncome += (o.amount || 0); }
+
+
+
+
+
+
+
+        else if (st === 'cancelled') cancelledOrders++;
+
+
+
+
+
+
+
+        else pendingOrders++;
+
+
+
+
+
+
+
+      }
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+
+
+    stats.push({
+
+
+
+
+
+
+
+      teacher: t,
+
+
+
+
+
+
+
+      courseCount: courseCount,
+
+
+
+
+
+
+
+      pendingOrders: pendingOrders,
+
+
+
+
+
+
+
+      confirmedOrders: confirmedOrders,
+
+
+
+
+
+
+
+      cancelledOrders: cancelledOrders,
+
+
+
+
+
+
+
+      totalOrders: pendingOrders + confirmedOrders + cancelledOrders,
+
+
+
+
+
+
+
+      totalIncome: totalIncome
+
+
+
+
+
+
+
+    });
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+
+
+  stats.sort(function(a, b) {
+
+
+
+
+
+
+
+    if (adminTeacherDataSortBy === 'income') return b.totalIncome - a.totalIncome;
+
+
+
+
+
+
+
+    if (adminTeacherDataSortBy === 'courses') return b.courseCount - a.courseCount;
+
+
+
+
+
+
+
+    return b.totalOrders - a.totalOrders;
+
+
+
+
+
+
+
+  });
+
+
+
+
+
+
+
+
+
+  var btns = document.querySelectorAll('.sort-btn');
+
+
+
+
+
+
+
+  for (var b = 0; b < btns.length; b++) {
+
+
+
+
+
+
+
+    var btn = btns[b];
+
+
+
+
+
+
+
+    if (btn.getAttribute('data-action-param') === adminTeacherDataSortBy) {
+
+
+
+
+
+
+
+      btn.classList.add('active');
+
+
+
+
+
+
+
+    } else {
+
+
+
+
+
+
+
+      btn.classList.remove('active');
+
+
+
+
+
+
+
+    }
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+
+
+  var html = '';
+
+
+
+
+
+
+
+  var totalAllIncome = 0;
+
+
+
+
+
+
+
+  for (var i = 0; i < stats.length; i++) {
+
+
+
+
+
+
+
+    var s = stats[i];
+
+
+
+
+
+
+
+    totalAllIncome += s.totalIncome;
+
+
+
+
+
+
+
+    html += '<div class="teacher-data-card">'
+
+
+
+
+
+
+
+      + '<div class="tdc-header">'
+
+
+
+
+
+
+
+      + '<div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-name">' + esc(s.teacher.name) + '</div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-phone">' + esc(s.teacher.phone) + '</div>'
+
+
+
+
+
+
+
+      + '</div>'
+
+
+
+
+
+
+
+      + '<div class="income-highlight">&yen;' + s.totalIncome + '</div>'
+
+
+
+
+
+
+
+      + '</div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-stats">'
+
+
+
+
+
+
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num">' + s.courseCount + '</div><div class="tdc-stat-label">课程数</div></div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num">' + s.totalOrders + '</div><div class="tdc-stat-label">总订单</div></div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#4CAF50">' + s.confirmedOrders + '</div><div class="tdc-stat-label"><span class="status-badge confirmed">已确认</span></div></div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#FF9800">' + s.pendingOrders + '</div><div class="tdc-stat-label"><span class="status-badge pending">待确认</span></div></div>'
+
+
+
+
+
+
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#F44336">' + s.cancelledOrders + '</div><div class="tdc-stat-label"><span class="status-badge cancelled">已取消</span></div></div>'
+
+
+
+
+
+
+
+      + '</div>'
+
+
+
+
+
+
+
+      + '</div>';
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+
+
+  html = '<div style="background:var(--bg-card);border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid var(--border);display:flex;justify-content:space-around;flex-wrap:wrap;gap:12px">'
+
+
+
+
+
+
+
+    + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#4CAF50">&yen;' + totalAllIncome + '</div><div class="tdc-stat-label">全平台总收入</div></div>'
+
+
+
+
+
+
+
+    + '<div class="tdc-stat"><div class="tdc-stat-num">' + stats.length + '</div><div class="tdc-stat-label">教师总数</div></div>'
+
+
+
+
+
+
+
+    + '</div>' + html;
+
+
+
+
+
+
+
+
+
+  list.innerHTML = html;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function sortTeacherData(param) {
+
+
+
+
+
+
+
+  adminTeacherDataSortBy = param;
+
+
+
+
+
+
+
+  var data = loadData();
+
+
+
+
+
+
+
+  renderAdminTeacherData(data);
+
+
+
+
+
+
+
+}
 
 
 
@@ -28842,6 +30124,14 @@ function renderParentIndex(data) {
 
 
 
+  populateTeacherFilter(data);
+
+
+
+
+
+
+
   renderPAllCourses(data);
 
 
@@ -28906,6 +30196,22 @@ function renderPAllCourses(data) {
 
 
 
+  var teacherFilter = document.getElementById('pTeacherFilter');
+
+
+
+
+
+
+
+  var selectedTeacherId = teacherFilter ? teacherFilter.value : '';
+
+
+
+
+
+
+
   for (var i = 0; i < items.length; i++) {
 
 
@@ -28931,6 +30237,14 @@ function renderPAllCourses(data) {
 
 
     if (!getTeacherById(data, c.teacherId)) continue;
+
+
+
+
+
+
+
+    if (selectedTeacherId && c.teacherId !== selectedTeacherId) continue;
 
 
 
@@ -29139,6 +30453,110 @@ function renderPAllCourses(data) {
 
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+function populateTeacherFilter(data) {
+
+
+
+
+
+
+
+  var sel = document.getElementById('pTeacherFilter');
+
+
+
+
+
+
+
+  if (!sel) return;
+
+
+
+
+
+
+
+  var currentVal = sel.value;
+
+
+
+
+
+
+
+  var teachers = data.teachers || [];
+
+
+
+
+
+
+
+  var opts = '<option value="">全部教师</option>';
+
+
+
+
+
+
+
+  for (var i = 0; i < teachers.length; i++) {
+
+
+
+
+
+
+
+    opts += '<option value="' + teachers[i].id + '"' + (currentVal === teachers[i].id ? ' selected' : '') + '>' + esc(teachers[i].name) + '</option>';
+
+
+
+
+
+
+
+  }
+
+
+
+
+
+
+
+  sel.innerHTML = opts;
+
+
+
+
+
+
+
+  sel.value = currentVal;
+
+
+
+
+
+
+
+}
 
 
 
@@ -36295,6 +37713,18 @@ var actionRoutes = {
   filterFeedback: function(el) { filterFeedback(el); },
 
   deleteFeedback: function(el) { deleteFeedback(el); },
+
+
+
+
+
+  sortTeacherData: function(el) { sortTeacherData(el.getAttribute('data-action-param')); },
+
+
+
+
+
+  filterPAllCoursesByTeacher: function(el) { var data = loadData(); renderPAllCourses(data); },
 
 
 
