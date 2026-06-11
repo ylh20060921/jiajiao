@@ -8641,6 +8641,166 @@ a{text-decoration:none;color:inherit}
 
 
 
+/* ===== 家长数据单卡 v1.0 ===== */
+
+
+
+
+
+
+
+.parent-search-row {
+
+  margin-bottom:12px;
+
+}
+
+
+
+
+
+
+
+.parent-search-input {
+
+  width:100%;
+
+  padding:10px 14px;
+
+  border-radius:10px;
+
+  border:1px solid var(--border);
+
+  background:var(--bg-card);
+
+  color:var(--text-primary);
+
+  font-size:14px;
+
+  outline:none;
+
+  box-sizing:border-box;
+
+}
+
+
+
+
+
+
+
+.parent-search-input::placeholder {
+
+  color:var(--text-muted);
+
+}
+
+
+
+
+
+
+
+.parent-search-input:focus {
+
+  border-color:var(--accent-orange);
+
+  box-shadow:0 0 0 2px rgba(255,107,53,0.15);
+
+}
+
+
+
+
+
+
+
+.parent-data-card {
+
+  background:var(--bg-card);
+
+  border-radius:12px;
+
+  padding:16px;
+
+  margin-bottom:12px;
+
+  border:1px solid var(--border);
+
+}
+
+
+
+
+
+
+
+.parent-data-card .pdc-header {
+
+  display:flex;
+
+  justify-content:space-between;
+
+  align-items:center;
+
+  margin-bottom:10px;
+
+  flex-wrap:wrap;
+
+  gap:8px;
+
+}
+
+
+
+
+
+
+
+.parent-data-card .pdc-name {
+
+  font-size:16px;
+
+  font-weight:700;
+
+}
+
+
+
+
+
+
+
+.parent-data-card .pdc-phone {
+
+  font-size:13px;
+
+  color:var(--text-muted);
+
+}
+
+
+
+
+
+
+
+.parent-data-card .pdc-stats {
+
+  display:flex;
+
+  gap:16px;
+
+  flex-wrap:wrap;
+
+}
+
+
+
+
+
+
+
 .teacher-filter-row {
 
   display:flex;
@@ -10242,6 +10402,30 @@ a{text-decoration:none;color:inherit}
 
     <div class="menu-section">
 
+      <div class="section-title">家长数据</div>
+
+      <div class="menu-list">
+
+        <div class="menu-item" data-action="navPage" data-target="page-admin-parents">
+
+          <div class="menu-left">
+
+            <div class="menu-icon">👨‍👩‍👧</div>
+
+            <div class="menu-text">家长信息</div>
+
+          </div>
+
+          <div class="menu-arrow">›</div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <div class="menu-section">
+
       <div class="section-title">用户反馈</div>
 
       <div class="menu-list">
@@ -11532,19 +11716,48 @@ a{text-decoration:none;color:inherit}
 
 </div>
 
+<!-- ==================== 管理员-家长信息 ==================== -->
+<div class="page" id="page-admin-parents">
 
+  <div class="container">
 
+    <div class="page-header">
 
+      <div>
 
+        <div class="header-title">家长信息</div>
 
+        <div class="header-desc">已注册家长订单统计</div>
 
+      </div>
 
+      <div class="back-btn" data-action="navPage" data-target="page-admin-index">返回后台</div>
 
+    </div>
 
+    <div class="parent-search-row">
 
+      <input type="text" id="parentSearchInput" class="parent-search-input" placeholder="搜索家长姓名或手机号..." oninput="filterParents()">
 
+    </div>
 
+    <div id="adminParentSummary" style="background:var(--bg-card);border-radius:12px;padding:14px;margin-bottom:12px;border:1px solid var(--border);display:flex;justify-content:space-around;flex-wrap:wrap;gap:12px">
 
+    </div>
+
+    <div id="adminParentList"></div>
+
+    <div id="adminParentEmpty" class="empty-state" style="display:none">
+
+      <div class="empty-icon">👨‍👩‍👧</div>
+
+      <div class="empty-text">暂无注册家长</div>
+
+    </div>
+
+  </div>
+
+</div>
 
 <!-- ==================== 教师首页 ==================== -->
 
@@ -17103,6 +17316,8 @@ function showPage(pageId) {
 
   if (pageId === 'page-admin-teacher-data') renderAdminTeacherData(data);
 
+  if (pageId === 'page-admin-parents') renderAdminParents(data);
+
   // 启动倒计时
 
 
@@ -19627,9 +19842,183 @@ function sortTeacherData(param) {
 }
 
 
+/* ========== 家长数据统计 ========== */
+
+var adminParentSearchText = '';
+
+function renderAdminParents(data) {
+
+  var list = document.getElementById('adminParentList');
+
+  var empty = document.getElementById('adminParentEmpty');
+
+  var summary = document.getElementById('adminParentSummary');
+
+  if (!list) return;
+
+  var parents = data.parents || [];
+
+  if (parents.length === 0) {
+
+    list.innerHTML = '';
+
+    if (empty) empty.style.display = 'block';
+
+    if (summary) summary.innerHTML = '';
+
+    return;
+
+  }
+
+  if (empty) empty.style.display = 'none';
 
 
+  // Aggregate order stats per parent
 
+  var statsMap = {};
+
+  for (var i = 0; i < parents.length; i++) {
+
+    statsMap[parents[i].id] = {
+
+      parent: parents[i],
+
+      pendingOrders: 0,
+
+      confirmedOrders: 0,
+
+      cancelledOrders: 0,
+
+      totalOrders: 0
+
+    };
+
+  }
+
+  if (data.orders) {
+
+    for (var j = 0; j < data.orders.length; j++) {
+
+      var o = data.orders[j];
+
+      var sid = o.parentId;
+
+      if (!sid || !statsMap[sid]) continue;
+
+      var st = o.status || 'pending';
+
+      if (st === 'confirmed') statsMap[sid].confirmedOrders++;
+
+      else if (st === 'cancelled') statsMap[sid].cancelledOrders++;
+
+      else statsMap[sid].pendingOrders++;
+
+      statsMap[sid].totalOrders++;
+
+    }
+
+  }
+
+
+  // Convert to array and filter by search
+
+  var stats = [];
+
+  for (var key in statsMap) {
+
+    if (!statsMap.hasOwnProperty(key)) continue;
+
+    var s = statsMap[key];
+
+    var search = adminParentSearchText.trim().toLowerCase();
+
+    if (search) {
+
+      if (s.parent.name.toLowerCase().indexOf(search) === -1 &&
+
+          s.parent.phone.toLowerCase().indexOf(search) === -1) {
+
+        continue;
+
+      }
+
+    }
+
+    stats.push(s);
+
+  }
+
+
+  // Sort by name
+
+  stats.sort(function(a, b) {
+
+    return a.parent.name.localeCompare(b.parent.name, 'zh-CN');
+
+  });
+
+
+  // Summary
+
+  if (summary) {
+
+    summary.innerHTML = '<div class="tdc-stat"><div class="tdc-stat-num">' + parents.length
+
+      + '</div><div class="tdc-stat-label">注册家长总数</div></div>';
+
+  }
+
+
+  // Render cards
+
+  var html = '';
+
+  for (var i = 0; i < stats.length; i++) {
+
+    var s = stats[i];
+
+    html += '<div class="parent-data-card">'
+
+      + '<div class="pdc-header">'
+
+      + '<div class="pdc-name">' + esc(s.parent.name) + '</div>'
+
+      + '<div class="pdc-phone">📱 ' + esc(s.parent.phone) + '</div>'
+
+      + '</div>'
+
+      + '<div class="pdc-stats">'
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num">' + s.totalOrders + '</div><div class="tdc-stat-label">总订单</div></div>'
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#2E7D32">' + s.confirmedOrders + '</div><div class="tdc-stat-label"><span class="status-badge confirmed">已确认</span></div></div>'
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#E65100">' + s.pendingOrders + '</div><div class="tdc-stat-label"><span class="status-badge pending">待确认</span></div></div>'
+
+      + '<div class="tdc-stat"><div class="tdc-stat-num" style="color:#C62828">' + s.cancelledOrders + '</div><div class="tdc-stat-label"><span class="status-badge cancelled">已取消</span></div></div>'
+
+      + '</div>'
+
+      + '</div>';
+
+  }
+
+  list.innerHTML = html;
+
+}
+
+
+function filterParents() {
+
+  var input = document.getElementById('parentSearchInput');
+
+  adminParentSearchText = input ? input.value : '';
+
+  var data = loadData();
+
+  renderAdminParents(data);
+
+}
 
 
 /* ========== 添加教师 ========== */
@@ -37871,6 +38260,12 @@ var actionRoutes = {
 
 
   sortTeacherData: function(el) { sortTeacherData(el.getAttribute('data-action-param')); },
+
+
+
+
+
+  filterParents: function() { filterParents(); },
 
 
 
