@@ -693,6 +693,11 @@
     font-size:11px;color:var(--accent-2);font-weight:500;
   }
   .cloud-badge svg{width:12px;height:12px}
+  .card-cloud-dl{border:1px solid rgba(0,188,212,.35);background:rgba(0,188,212,.08);color:var(--accent-2);font-size:11px;padding:2px 10px;border-radius:var(--r-pill);cursor:pointer;transition:all .2s;white-space:nowrap}
+  .card-cloud-dl:hover{background:rgba(0,188,212,.2);border-color:rgba(0,188,212,.6)}
+  .card-cloud-hascopy{font-size:10px;color:#22c55e;opacity:.8;white-space:nowrap}
+  .card-list .card-cloud-dl{font-size:10px;padding:1px 8px;margin-left:6px}
+  .card-list .card-cloud-hascopy{font-size:9px}
 
 
 
@@ -958,7 +963,7 @@ function thumbHtml(m){
 }
 function tagsHtml(m){
   let tags=(m.tags||[]).slice(0,3).map(function(t){const c=tagColor(t);return '<span class="tag" style="background:'+c.bg+';color:'+c.fg+';box-shadow:0 0 12px '+c.glow+'">'+escapeHtml(t)+'</span>';}).join('');
-  if(m.cloud)tags+='<span class="cloud-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>云端</span>';
+  if(m.cloud){tags+='<span class="cloud-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>云端</span>';if(hasLocalCopy(m.id))tags+='<span class="cloud-badge" style="background:rgba(34,197,94,0.15);color:#22c55e">已下载</span>';}
   return tags;
 }
 function stackCard(m,i,models){
@@ -980,6 +985,7 @@ function stackCard(m,i,models){
     <div class="card-foot">
       <span>${fmtSize(m.size)}</span>
       <span>${fmtDate(m.createdAt)}</span>
+      ${m.cloud&&!hasLocalCopy(m.id)?`<button class="card-cloud-dl" title="下载到本地" onclick="event.stopPropagation();downloadCloudToLocal(getCloudModel('${m.id}')).then(function(){render();}).catch(function(e){alert('下载失败: '+e.message);})">⬇ 下载到本地</button>`:m.cloud?`<span class="card-cloud-hascopy">已缓存</span>`:''}
     </div>
   </div>`;
 }
@@ -997,6 +1003,7 @@ function gridCard(m){
     <div class="card-foot">
       <span>${fmtSize(m.size)}</span>
       <span>${fmtDate(m.createdAt)}</span>
+      ${m.cloud&&!hasLocalCopy(m.id)?`<button class="card-cloud-dl" title="下载到本地" onclick="event.stopPropagation();downloadCloudToLocal(getCloudModel('${m.id}')).then(function(){render();}).catch(function(e){alert('下载失败: '+e.message);})">⬇ 下载到本地</button>`:m.cloud?`<span class="card-cloud-hascopy">已缓存</span>`:''}
     </div>
   </div>`;
 }
@@ -1014,6 +1021,7 @@ function listRow(m){
     <div class="list-meta">
       <span>${fmtSize(m.size)}</span>
       <span>${fmtDate(m.createdAt)}</span>
+      ${m.cloud&&!hasLocalCopy(m.id)?`<button class="card-cloud-dl" title="下载到本地" onclick="event.stopPropagation();downloadCloudToLocal(getCloudModel('${m.id}')).then(function(){render();}).catch(function(e){alert('下载失败: '+e.message);})">⬇ 下载到本地</button>`:m.cloud?`<span class="card-cloud-hascopy">已缓存</span>`:''}
     </div>
   </div>`;
 }
@@ -2429,11 +2437,11 @@ async function loadModelIntoIframe(id){
     const frame=document.getElementById('modelFrame');
     if(!frame)return;
     try{
-      const resp=await fetch(cm.downloadUrl);
-      if(!resp.ok)throw new Error('HTTP '+resp.status);
-      const txt=await resp.text();
-      const blob=new Blob([txt],{type:'text/html'});
-      frame.src=URL.createObjectURL(blob);
+      let localId=getLocalCopyId(id);
+      if(!localId){localId=await downloadCloudToLocal(cm);}
+      const r=await getModelBlob(localId);
+      if(!r)throw new Error('本地副本加载失败');
+      frame.src=URL.createObjectURL(r.blob);
     }catch(e){console.error('云端模型加载失败',e);alert('云端文件加载失败: '+e.message);}
     return;
   }
@@ -2448,11 +2456,11 @@ async function openFull(id){
     const cm=getCloudModel(id);
     if(!cm)return;
     try{
-      const resp=await fetch(cm.downloadUrl);
-      if(!resp.ok)throw new Error('HTTP '+resp.status);
-      const txt=await resp.text();
-      const blob=new Blob([txt],{type:'text/html'});
-      window.open(URL.createObjectURL(blob),'_blank');
+      let localId=getLocalCopyId(id);
+      if(!localId){localId=await downloadCloudToLocal(cm);await render();}
+      const r=await getModelBlob(localId);
+      if(!r)throw new Error('本地副本加载失败');
+      window.open(URL.createObjectURL(r.blob),'_blank');
     }catch(e){console.error('云端模型全屏失败',e);alert('云端文件加载失败: '+e.message);}
     return;
   }
@@ -2695,6 +2703,38 @@ const _tk3='fPmA4U8zW1';
 function getCloudToken(){return _tk1+_tk2+_tk3;}
 function isCloudId(id){return typeof id==='string'&&id.startsWith('cloud_');}
 function getCloudModel(id){return cloudModels.find(m=>m.id===id)||null;}
+
+// Cloud-to-Local ID mapping (localStorage)
+const CLOUD_MAP_KEY='mv_cloud2local';
+function getCloudToLocalMap(){try{const s=localStorage.getItem(CLOUD_MAP_KEY);return s?JSON.parse(s):{};}catch(e){return {};}}
+function setCloudToLocalEntry(cloudId,localId){try{const m=getCloudToLocalMap();m[cloudId]=localId;localStorage.setItem(CLOUD_MAP_KEY,JSON.stringify(m));}catch(e){}}
+function getLocalCopyId(cloudId){return getCloudToLocalMap()[cloudId]||null;}
+function hasLocalCopy(cloudId){return !!getLocalCopyId(cloudId);}
+
+// Download cloud model via GitHub API → decode base64 → store in IndexedDB
+async function downloadCloudToLocal(cm){
+  const token=getCloudToken();
+  if(!token)throw new Error('Token不可用');
+  const apiUrl=CLOUD_API+'/'+encodeURIComponent(cm.filename);
+  const resp=await fetch(apiUrl,{headers:{Authorization:'Bearer '+token}});
+  if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  if(!data.content)throw new Error('无文件内容');
+  const binStr=atob(data.content.replace(/\s/g,''));
+  const bytes=new Uint8Array(binStr.length);
+  for(let i=0;i<binStr.length;i++)bytes[i]=binStr.charCodeAt(i);
+  const buffer=bytes.buffer;
+  const thumb=extractThumbFromHtml(buffer);
+  const title=extractTitleFromHtml(buffer);
+  const localId=await dbAdd(STORE_MODELS,{
+    filename:cm.filename,originalName:cm.originalName||cm.filename,
+    content:buffer,size:data.size||cm.size||0,
+    note:'',tags:[],title:title||(cm.title||''),
+    thumb:thumb||'',fav:false,createdAt:Date.now()
+  });
+  setCloudToLocalEntry(cm.id,localId);
+  return localId;
+}
 
 
 
