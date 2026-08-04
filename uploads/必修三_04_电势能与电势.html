@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>等势面与电势 — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}
+canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:22px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10.5px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-top:2px}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .formula{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);margin-top:1px}
+
+#legend{
+  position:fixed;top:120px;right:20px;z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(16px);
+  border:1px solid var(--border);border-radius:10px;padding:10px 14px;
+  font-size:11px;display:flex;flex-direction:column;gap:5px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.35);
+}
+#legend .row{display:flex;align-items:center;gap:8px}
+#legend .bar{width:40px;height:8px;border-radius:4px;flex-shrink:0}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.mode-btn{
+  padding:8px 14px;border:1px solid var(--border);border-radius:8px;
+  background:rgba(22,27,34,0.8);color:var(--text);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all 0.22s;
+}
+.mode-btn:hover{background:rgba(88,166,255,0.12);border-color:var(--accent-blue)}
+.mode-btn.active{background:rgba(88,166,255,0.18);border-color:var(--accent-blue);color:var(--accent-blue)}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+
+@media(max-width:900px){
+  #top-panel{gap:12px;padding:8px 14px}
+  #top-panel .item .val{font-size:13px}
+  #controls{gap:8px;padding:8px 12px}
+  .mode-btn{font-size:10px;padding:6px 10px}
+  #legend{right:6px;top:100px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">模式</div><div class="val gold" id="vMode">正点电荷</div></div>
+  <div class="item"><div class="lbl">电荷量 Q</div><div class="val blue" id="vQ">1.00</div><div class="formula">k = 9×10⁹</div></div>
+  <div class="item"><div class="lbl">φ(r=1)</div><div class="val gold" id="vPhi">9.00×10⁹ V</div><div class="formula">φ = kQ / r</div></div>
+  <div class="item" id="itemDist" style="display:none"><div class="lbl">间距 d</div><div class="val gold" id="vD">2.00</div></div>
+  <div class="item"><div class="lbl">等势面层数</div><div class="val blue" id="vLayers">5</div></div>
+</div>
+<div id="legend">
+  <div class="row"><span class="bar" style="background:linear-gradient(90deg,#ff4444,#ffaa44,#ffff44,#88ff44,#44aaff)"></span>高φ → 低φ</div>
+  <div class="row"><span style="color:#ff6644;font-weight:700">+Q</span> 正电荷</div>
+  <div class="row"><span style="color:#4488ff;font-weight:700">-Q</span> 负电荷</div>
+  <div class="row"><span style="color:#ffaa44">━━</span> 电场线（⊥等势面）</div>
+</div>
+<div id="controls">
+  <button class="mode-btn active" data-mode="positive">正点电荷</button>
+  <button class="mode-btn" data-mode="negative">负点电荷</button>
+  <button class="mode-btn" data-mode="dipole">等量异种</button>
+  <button class="mode-btn" data-mode="same">等量同种</button>
+  <div class="slider-grp"><label>电荷量 Q</label><input type="range" id="qSlider" min="0.2" max="3.0" value="1.0" step="0.1"><span class="val" id="qVal">1.0</span></div>
+  <div class="slider-grp" id="distGrp"><label>间距 d</label><input type="range" id="dSlider" min="0.5" max="4.0" value="2.0" step="0.1"><span class="val" id="dVal">2.0</span></div>
+  <div class="slider-grp"><label>层数</label><input type="range" id="layerSlider" min="2" max="8" value="5" step="1"><span class="val" id="layerVal">5</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R/F/T 视角 · 1-4 模式</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene ──
+const container = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 8, 30);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 50);
+camera.position.set(6, 4.5, 9);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 3; controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.75;
+controls.update();
+
+// ── Lights ──
+scene.add(new THREE.AmbientLight(0x404060, 1.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
+keyLight.position.set(8, 10, 5); keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 0.2; keyLight.shadow.camera.far = 30;
+keyLight.shadow.camera.left = -10; keyLight.shadow.camera.right = 10;
+keyLight.shadow.camera.top = 10; keyLight.shadow.camera.bottom = -10;
+keyLight.shadow.bias = -0.00005; keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+scene.add(new THREE.DirectionalLight(0x8899cc, 1.8).position.set(-3, 3, -2));
+scene.add(new THREE.DirectionalLight(0xffffff, 2.0).position.set(0, 2, -5));
+scene.add(new THREE.PointLight(0xffffff, 3, 8).position.set(0, 4, 2));
+
+const root = new THREE.Group();
+scene.add(root);
+
+// ── Grid ──
+const gridHelper = new THREE.PolarGridHelper(4.5, 24, 16, 64, 0x30363d, 0x1a1e28);
+gridHelper.position.y = -3.5; root.add(gridHelper);
+
+// ── Materials ──
+const matPosCharge = new THREE.MeshStandardMaterial({ color: 0xff4444, roughness: 0.14, metalness: 0.85, emissive: 0x330000, emissiveIntensity: 0.8 });
+const matNegCharge = new THREE.MeshStandardMaterial({ color: 0x4488ff, roughness: 0.14, metalness: 0.85, emissive: 0x000033, emissiveIntensity: 0.8 });
+const matGlowPos = new THREE.MeshBasicMaterial({ color: 0xff6644, transparent: true, opacity: 0.25, depthWrite: false });
+const matGlowNeg = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.25, depthWrite: false });
+
+const chargeGeom = new THREE.SphereGeometry(0.22, 64, 64);
+const glowGeom = new THREE.SphereGeometry(0.32, 32, 32);
+
+const charge1 = { mesh: new THREE.Mesh(chargeGeom, matPosCharge), glow: new THREE.Mesh(glowGeom, matGlowPos), pos: new THREE.Vector3() };
+const charge2 = { mesh: new THREE.Mesh(chargeGeom, matNegCharge), glow: new THREE.Mesh(glowGeom, matGlowNeg), pos: new THREE.Vector3() };
+charge1.mesh.castShadow = true; charge2.mesh.castShadow = true;
+root.add(charge1.mesh); root.add(charge2.mesh);
+root.add(charge1.glow); root.add(charge2.glow);
+
+const isoGroup = new THREE.Group(); root.add(isoGroup);
+const fieldGroup = new THREE.Group(); root.add(fieldGroup);
+const labelGroup = new THREE.Group(); root.add(labelGroup);
+
+// ── State ──
+let mode = 'positive', Q = 1.0, d = 2.0, nLayers = 5;
+const k = 9e9;
+
+function phiAt(pos, charges) {
+  let total = 0;
+  for (const ch of charges) {
+    const dist = Math.max(pos.distanceTo(ch.pos), 0.05);
+    total += k * ch.q / dist;
+  }
+  return total;
+}
+
+function EfieldAt(pos, charges) {
+  const E = new THREE.Vector3();
+  for (const ch of charges) {
+    const r = new THREE.Vector3().subVectors(pos, ch.pos);
+    const dist = r.length();
+    if (dist < 0.05) continue;
+    const mag = k * Math.abs(ch.q) / (dist * dist);
+    E.addScaledVector(r.normalize(), ch.q > 0 ? mag : -mag);
+  }
+  return E;
+}
+
+// ── Deformed equipotential sphere via binary search ──
+function buildDeformedSphere(center, charges, phiTarget, nDetail) {
+  const ico = new THREE.IcosahedronGeometry(1, nDetail);
+  const posArr = ico.attributes.position;
+
+  for (let i = 0; i < posArr.count; i++) {
+    const dir = new THREE.Vector3(posArr.getX(i), posArr.getY(i), posArr.getZ(i)).normalize();
+    let lo = 0.25, hi = 7.0;
+    for (let b = 0; b < 16; b++) {
+      const mid = (lo + hi) / 2;
+      const pt = dir.clone().multiplyScalar(mid).add(center);
+      const phi = phiAt(pt, charges);
+      if (phi > phiTarget) lo = mid; else hi = mid;
+    }
+    const r = (lo + hi) / 2;
+    posArr.setXYZ(i, dir.x * r, dir.y * r, dir.z * r);
+  }
+  ico.computeVertexNormals();
+  return ico;
+}
+
+// ── Color for potential ──
+function phiColor(phiTarget, maxPhi, minPhi) {
+  const t = (phiTarget - minPhi) / (maxPhi - minPhi + 1);
+  const r = t > 0.5 ? 1 : t * 2;
+  const g = t > 0.5 ? 2 * (1 - t) : t * 1.5;
+  const b = 1 - t;
+  return new THREE.Color(r, g * 0.8, b * 0.7 + 0.3);
+}
+
+// ── Build equipotential surfaces ──
+function buildIsosurfaces(charges, mode) {
+  while (isoGroup.children.length > 0) isoGroup.remove(isoGroup.children[0]);
+  while (fieldGroup.children.length > 0) fieldGroup.remove(fieldGroup.children[0]);
+  while (labelGroup.children.length > 0) labelGroup.remove(labelGroup.children[0]);
+
+  const maxPhiAll = mode === 'negative' ? -k * Math.abs(charges[0].q) / 0.3 : (mode === 'same' ? k * Q / 0.3 : k * Math.abs(charges[0].q) / 0.3);
+  const minPhiAll = mode === 'positive' ? k * Q / 7 : (mode === 'dipole' ? -Math.abs(maxPhiAll) : -k * Q / 7);
+
+  // Determine phi targets
+  let phiTargets = [];
+  if (mode === 'positive' || mode === 'negative') {
+    const absPhi0 = k * Q / 7;
+    const absPhiN = k * Q / 0.35;
+    for (let i = 0; i < nLayers; i++) {
+      const t = (i + 1) / nLayers;
+      const phi = absPhi0 + (absPhiN - absPhi0) * t;
+      phiTargets.push(mode === 'negative' ? -phi : phi);
+    }
+  } else if (mode === 'dipole') {
+    const absMax = k * Q / 0.35;
+    for (let i = 0; i < nLayers; i++) {
+      const t = (i + 1) / nLayers;
+      phiTargets.push(absMax * t * 0.8);
+      phiTargets.push(-absMax * t * 0.8);
+    }
+  } else if (mode === 'same') {
+    const absMax = k * Q / 0.35;
+    for (let i = 0; i < nLayers; i++) {
+      const t = (i + 1) / nLayers;
+      phiTargets.push(absMax * t * 0.85);
+    }
+  }
+
+  const maxPhi = Math.max(...phiTargets.map(Math.abs));
+  const minPhi = Math.min(...phiTargets);
+
+  // For dipole/same, build surfaces from each charge's perspective
+  if (mode === 'positive' || mode === 'negative') {
+    const center = charges[0].pos;
+    for (const pt of phiTargets) {
+      const geom = buildDeformedSphere(center, charges, pt, 3);
+      const col = phiColor(pt, maxPhi, minPhi);
+      const mat = new THREE.MeshPhysicalMaterial({
+        color: col, roughness: 0.2, metalness: 0.0, transparent: true, opacity: 0.22,
+        clearcoat: 0.1, clearcoatRoughness: 0.3, depthWrite: false, side: THREE.DoubleSide
+      });
+      const mesh = new THREE.Mesh(geom, mat);
+      mesh.renderOrder = 1;
+      isoGroup.add(mesh);
+
+      // Wireframe overlay
+      const wire = new THREE.LineSegments(
+        new THREE.WireframeGeometry(geom),
+        new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.18, depthTest: true })
+      );
+      wire.renderOrder = 2;
+      isoGroup.add(wire);
+
+      // Potential label
+      addPhiLabel(center.clone().add(new THREE.Vector3(0, 0, 0)), pt, col);
+    }
+  } else if (mode === 'dipole') {
+    const posCenter = charges[0].pos, negCenter = charges[1].pos;
+    // Positive side surfaces
+    for (const pt of phiTargets.filter(p => p > 0)) {
+      const geom = buildDeformedSphere(posCenter, charges, pt, 3);
+      const col = phiColor(pt, maxPhi, minPhi);
+      const mat = new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.2, metalness: 0.0, transparent: true, opacity: 0.2, clearcoat: 0.1, clearcoatRoughness: 0.3, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geom, mat); mesh.renderOrder = 1; isoGroup.add(mesh);
+      const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geom), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.15, depthTest: true }));
+      wire.renderOrder = 2; isoGroup.add(wire);
+    }
+    // Negative side surfaces
+    for (const pt of phiTargets.filter(p => p < 0)) {
+      const geom = buildDeformedSphere(negCenter, charges, pt, 3);
+      const col = phiColor(pt, maxPhi, minPhi);
+      const mat = new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.2, metalness: 0.0, transparent: true, opacity: 0.2, clearcoat: 0.1, clearcoatRoughness: 0.3, depthWrite: false, side: THREE.DoubleSide });
+      const mesh = new THREE.Mesh(geom, mat); mesh.renderOrder = 1; isoGroup.add(mesh);
+      const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geom), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.15, depthTest: true }));
+      wire.renderOrder = 2; isoGroup.add(wire);
+    }
+    // Zero potential midplane
+    const midPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x448855, transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })
+    );
+    midPlane.position.set(0, 0, 0); midPlane.rotation.set(0, Math.PI / 2, 0); midPlane.renderOrder = 0;
+    isoGroup.add(midPlane);
+    addLabelAt(new THREE.Vector3(0, 2.5, 0), 'φ = 0', '#88cc88');
+  } else if (mode === 'same') {
+    for (const ch of charges) {
+      for (const pt of phiTargets) {
+        const geom = buildDeformedSphere(ch.pos, charges, pt, 3);
+        const col = phiColor(pt, maxPhi, minPhi);
+        const mat = new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.2, metalness: 0.0, transparent: true, opacity: 0.2, clearcoat: 0.1, clearcoatRoughness: 0.3, depthWrite: false, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(geom, mat); mesh.renderOrder = 1; isoGroup.add(mesh);
+        const wire = new THREE.LineSegments(new THREE.WireframeGeometry(geom), new THREE.LineBasicMaterial({ color: col, transparent: true, opacity: 0.15, depthTest: true }));
+        wire.renderOrder = 2; isoGroup.add(wire);
+      }
+    }
+    // Midplane (highest potential region)
+    const midPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(8, 8),
+      new THREE.MeshBasicMaterial({ color: 0x88cc44, transparent: true, opacity: 0.08, depthWrite: false, side: THREE.DoubleSide })
+    );
+    midPlane.position.set(0, 0, 0); midPlane.rotation.set(0, Math.PI / 2, 0); midPlane.renderOrder = 0;
+    isoGroup.add(midPlane);
+    addLabelAt(new THREE.Vector3(0, 2.5, 0), 'φ_max', '#ffaa44');
+  }
+
+  // ── Sample field lines (perpendicular to equipotential surfaces) ──
+  const nFieldLines = 14;
+  for (let i = 0; i < nFieldLines; i++) {
+    let startPos;
+    if (mode === 'positive') {
+      const ang = i * Math.PI * 2 / nFieldLines;
+      const elev = (i % 3) * 0.6 - 0.6;
+      startPos = new THREE.Vector3(Math.cos(ang) * 0.3, elev, Math.sin(ang) * 0.3).add(charges[0].pos);
+    } else if (mode === 'negative') {
+      const ang = i * Math.PI * 2 / nFieldLines;
+      const elev = (i % 3) * 0.6 - 0.6;
+      startPos = new THREE.Vector3(Math.cos(ang) * 4.5, elev * 3, Math.sin(ang) * 4.5).add(charges[0].pos);
+    } else if (mode === 'dipole') {
+      const ang = i * Math.PI * 2 / nFieldLines;
+      startPos = new THREE.Vector3(Math.cos(ang) * 0.3, (i % 3 - 1) * 0.4, Math.sin(ang) * 0.3).add(charges[0].pos);
+    } else {
+      const half = Math.floor(nFieldLines / 2);
+      const chIdx = i < half ? 0 : 1;
+      const ang = (i % half) * Math.PI * 2 / half;
+      startPos = new THREE.Vector3(Math.cos(ang) * 0.3, (i % 3 - 1) * 0.4, Math.sin(ang) * 0.3).add(charges[chIdx].pos);
+    }
+    const pts = [startPos.clone()];
+    let pos = startPos.clone();
+    for (let s = 0; s < 100; s++) {
+      const E = EfieldAt(pos, charges);
+      if (E.length() < 1e-6) break;
+      const dir = E.normalize();
+      const adapt = 0.1 * Math.min(1, 3 / Math.max(E.length() / 1e9, 1));
+      pos.addScaledVector(dir, adapt);
+      if (pos.length() > 7) break;
+      let stop = false;
+      for (const ch of charges) { if (pos.distanceTo(ch.pos) < 0.28) { stop = true; break; } }
+      pts.push(pos.clone());
+      if (stop) break;
+    }
+    if (pts.length < 2) continue;
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tube = new THREE.Mesh(
+      new THREE.TubeGeometry(curve, Math.min(pts.length * 2, 200), 0.015, 6, false),
+      new THREE.MeshStandardMaterial({ color: 0xffaa44, roughness: 0.4, metalness: 0.05, emissive: 0x221100, emissiveIntensity: 0.4 })
+    );
+    fieldGroup.add(tube);
+
+    // Arrow at endpoint to show direction
+    const endPt = pts[pts.length - 1];
+    const prevPt = pts[pts.length - 2];
+    const arrowDir = new THREE.Vector3().subVectors(endPt, prevPt).normalize();
+    const arrow = new THREE.Mesh(
+      new THREE.ConeGeometry(0.05, 0.15, 6),
+      new THREE.MeshStandardMaterial({ color: 0xffaa44, roughness: 0.3, metalness: 0.1, emissive: 0x221100, emissiveIntensity: 0.3 })
+    );
+    arrow.position.copy(endPt);
+    arrow.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), arrowDir);
+    fieldGroup.add(arrow);
+  }
+}
+
+function addPhiLabel(at, phiTarget, col) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  const absVal = Math.abs(phiTarget);
+  let text;
+  if (absVal >= 1e9) text = (phiTarget >= 0 ? '+' : '−') + (absVal / 1e9).toFixed(1) + '×10⁹ V';
+  else if (absVal >= 1e6) text = (phiTarget >= 0 ? '+' : '−') + (absVal / 1e6).toFixed(1) + '×10⁶ V';
+  else text = (phiTarget >= 0 ? '+' : '') + absVal.toFixed(1) + ' V';
+  ctx.fillStyle = `rgb(${Math.floor(col.r*255)},${Math.floor(col.g*255)},${Math.floor(col.b*255)})`;
+  ctx.font = 'bold 22px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, depthWrite: false }));
+  sprite.scale.set(0.8, 0.4, 1);
+  sprite.position.copy(at.clone().add(new THREE.Vector3(0.5, 0.3, 0)));
+  labelGroup.add(sprite);
+}
+
+function addLabelAt(pos, text, color) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color; ctx.font = 'bold 24px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, depthWrite: false }));
+  sprite.scale.set(0.7, 0.35, 1); sprite.position.copy(pos);
+  labelGroup.add(sprite);
+}
+
+function makeChargeLabel(text, color) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color; ctx.font = 'bold 28px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  return new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, depthWrite: false });
+}
+
+const lblPos = new THREE.Sprite(makeChargeLabel('+Q', '#ff6666')); lblPos.scale.set(0.5, 0.25, 1);
+const lblNeg = new THREE.Sprite(makeChargeLabel('−Q', '#4488ff')); lblNeg.scale.set(0.5, 0.25, 1);
+const lblPos2 = new THREE.Sprite(makeChargeLabel('+Q', '#ff6666')); lblPos2.scale.set(0.5, 0.25, 1);
+root.add(lblPos); root.add(lblNeg); root.add(lblPos2);
+
+// ── setup charges ──
+let charges = [];
+function setup() {
+  charges = [];
+  if (mode === 'positive') {
+    const p = new THREE.Vector3(0, 0, 0);
+    charges = [{ pos: p, q: Q }];
+    charge1.mesh.position.copy(p); charge1.glow.position.copy(p);
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = false; charge2.glow.visible = false;
+    lblPos.position.set(0.45, 0.45, 0); lblPos.visible = true; lblNeg.visible = false; lblPos2.visible = false;
+  } else if (mode === 'negative') {
+    const p = new THREE.Vector3(0, 0, 0);
+    charges = [{ pos: p, q: -Q }];
+    charge1.mesh.position.copy(p); charge1.glow.position.copy(p);
+    charge1.mesh.material = matNegCharge; charge1.glow.material = matGlowNeg;
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = false; charge2.glow.visible = false;
+    lblPos.visible = false; lblNeg.position.set(0.45, 0.45, 0); lblNeg.visible = true; lblPos2.visible = false;
+  } else if (mode === 'dipole') {
+    const p1 = new THREE.Vector3(-d / 2, 0, 0), p2 = new THREE.Vector3(d / 2, 0, 0);
+    charges = [{ pos: p1, q: Q }, { pos: p2, q: -Q }];
+    charge1.mesh.position.copy(p1); charge1.glow.position.copy(p1);
+    charge2.mesh.position.copy(p2); charge2.glow.position.copy(p2);
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+    charge2.mesh.material = matNegCharge; charge2.glow.material = matGlowNeg;
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = true; charge2.glow.visible = true;
+    lblPos.position.set(-d / 2, 0.5, 0); lblPos.visible = true;
+    lblNeg.position.set(d / 2, 0.5, 0); lblNeg.visible = true; lblPos2.visible = false;
+  } else if (mode === 'same') {
+    const p1 = new THREE.Vector3(-d / 2, 0, 0), p2 = new THREE.Vector3(d / 2, 0, 0);
+    charges = [{ pos: p1, q: Q }, { pos: p2, q: Q }];
+    charge1.mesh.position.copy(p1); charge1.glow.position.copy(p1);
+    charge2.mesh.position.copy(p2); charge2.glow.position.copy(p2);
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+    charge2.mesh.material = matPosCharge; charge2.glow.material = matGlowPos;
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = true; charge2.glow.visible = true;
+    lblPos.position.set(-d / 2, 0.5, 0); lblPos.visible = true;
+    lblNeg.visible = false; lblPos2.position.set(d / 2, 0.5, 0); lblPos2.visible = true;
+  }
+  buildIsosurfaces(charges, mode);
+  updateUI();
+}
+
+function updateUI() {
+  document.getElementById('vMode').textContent = { positive: '正点电荷', negative: '负点电荷', dipole: '等量异种', same: '等量同种' }[mode];
+  document.getElementById('vQ').textContent = Q.toFixed(2);
+  document.getElementById('vPhi').textContent = (k * Q >= 1e9 ? (k * Q / 1e9).toFixed(2) + '×10⁹ V' : (k * Q).toFixed(0) + ' V');
+  document.getElementById('vLayers').textContent = nLayers;
+  document.getElementById('qVal').textContent = Q.toFixed(1);
+  document.getElementById('layerVal').textContent = nLayers;
+  const distItem = document.getElementById('itemDist'), distGrp = document.getElementById('distGrp');
+  const showDist = mode === 'dipole' || mode === 'same';
+  distItem.style.display = showDist ? '' : 'none';
+  distGrp.style.display = showDist ? '' : 'none';
+  if (showDist) { document.getElementById('vD').textContent = d.toFixed(2); document.getElementById('dVal').textContent = d.toFixed(1); }
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+}
+
+// ── Events ──
+document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('click', () => { mode = b.dataset.mode; setup(); }));
+document.getElementById('qSlider').addEventListener('input', function() { Q = parseFloat(this.value); setup(); });
+document.getElementById('dSlider').addEventListener('input', function() { d = parseFloat(this.value); setup(); });
+document.getElementById('layerSlider').addEventListener('input', function() { nLayers = parseInt(this.value); setup(); });
+
+window.addEventListener('keydown', e => {
+  const modes = { '1': 'positive', '2': 'negative', '3': 'dipole', '4': 'same' };
+  if (modes[e.key]) { mode = modes[e.key]; setup(); }
+  if (e.key.toLowerCase() === 'r') { camera.position.set(6, 4.5, 9); controls.target.set(0, 0, 0); controls.update(); }
+  if (e.key.toLowerCase() === 'f') { camera.position.set(0, 0, 9); controls.target.set(0, 0, 0); controls.update(); }
+  if (e.key.toLowerCase() === 't') { camera.position.set(0, 9, 0.1); controls.target.set(0, 0, 0); controls.update(); }
+});
+window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); });
+
+// ── Animation ──
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+setup();
+requestAnimationFrame(animate);
+</script>
+
+</html>
