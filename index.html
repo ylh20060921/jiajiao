@@ -1077,7 +1077,7 @@ async function toggleFavIn(store,id){
   toast(m.fav?'已收藏':'已取消收藏',m.fav?'ok':'');
   render();
 }
-function toggleFav(id){return toggleFavIn(STORE_MODELS,id);}
+function toggleFav(id){id=normalizeId(id);return toggleFavIn(STORE_MODELS,id);}
 function toggleFavFilter(){
   state.favOnly=!state.favOnly;
   state.page=1;state.keyIndex=-1;
@@ -2327,6 +2327,7 @@ document.addEventListener('mousemove',e=>{
 });
 // 鸠蒙6 app 打开转场：记录被点卡片在屏上的位置/尺寸，预览页从该位置放大到全屏 + 透明度 0→1
 function openViewer(id,e){
+  id=normalizeId(id);
   const card=e&&e.currentTarget?e.currentTarget.getBoundingClientRect():null;
   state.openFromRect=card?{x:card.x,y:card.y,w:card.width,h:card.height}:null;
   state.view='viewer';state.currentModelId=id;render();
@@ -2340,12 +2341,13 @@ function onTagFilterChange(v){state.tag=v;state.page=1;render();}
 function enterSelectMode(){state.selectMode=true;state.selectedIds=new Set();render();}
 function exitSelectMode(){state.selectMode=false;state.selectedIds=new Set();render();}
 function toggleSelect(id){
+  id=normalizeId(id);
   if(state.selectedIds.has(id))state.selectedIds.delete(id);
   else state.selectedIds.add(id);
   render();
 }
 function selectAllOnPage(ids){
-  ids.forEach(id=>state.selectedIds.add(id));
+  ids.forEach(id=>state.selectedIds.add(normalizeId(id)));
   render();
 }
 function clearSelection(){state.selectedIds=new Set();render();}
@@ -2463,6 +2465,7 @@ async function loadModelIntoIframe(id){
   if(frame)frame.src=url;
 }
 async function openFull(id){
+  id=normalizeId(id);
   if(isCloudId(id)){
     const cm=getCloudModel(id);
     if(!cm)return;
@@ -2483,6 +2486,7 @@ async function openFull(id){
 
 // ---------- 编辑/删除 ----------
 async function saveModelEdit(id){
+  id=normalizeId(id);
   const note=document.getElementById('noteEdit').value;
   const tags=parseTags(document.getElementById('tagEdit').value);
   await updateModel(id,{note,tags});
@@ -2490,6 +2494,7 @@ async function saveModelEdit(id){
   render();
 }
 async function deleteCurrentModel(id){
+  id=normalizeId(id);
   if(!confirm('确认删除此模型？此操作不可恢复。'))return;
   if(isCloudId(id)){
     const cm=getCloudModel(id);
@@ -2512,7 +2517,7 @@ async function downloadById(store,id,mime){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
   setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
-function downloadModel(id){return downloadById(STORE_MODELS,id,'text/html');}
+function downloadModel(id){id=normalizeId(id);return downloadById(STORE_MODELS,id,'text/html');}
 
 // ---------- 鸿蒙6 光影追踪：光源跟随鼠标的动态高光 ----------
 // 节流优化：requestAnimationFrame 每帧只算一次，缓存 cards 列表 + 标志位避免每帧 querySelectorAll，
@@ -2713,6 +2718,7 @@ const _tk2='tirvsvjcAifRMz0TX';
 const _tk3='fPmA4U8zW1';
 function getCloudToken(){return _tk1+_tk2+_tk3;}
 function isCloudId(id){return typeof id==='string'&&id.startsWith('cloud_');}
+function normalizeId(id){return isCloudId(id)?id:Number(id);}
 function getCloudModel(id){return cloudModels.find(m=>m.id===id)||null;}
 
 // Cloud-to-Local ID mapping (localStorage)
