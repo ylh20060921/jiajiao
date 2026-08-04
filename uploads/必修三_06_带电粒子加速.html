@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>带电粒子在电场中的加速 — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10.5px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .bar-wrap{width:60px;height:6px;background:var(--slider-track);border-radius:3px;margin-top:3px;overflow:hidden}
+#top-panel .item .bar-fill{height:100%;border-radius:3px;transition:width 0.15s}
+#top-panel .item .bar-fill.ek{background:var(--accent-gold)}
+#top-panel .item .bar-fill.ep{background:var(--accent-blue)}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+@media(max-width:900px){#top-panel{gap:10px;padding:8px 12px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">电场 E</div><div class="val gold" id="vE">3.33 V/m</div></div>
+  <div class="item"><div class="lbl">加速度 a</div><div class="val blue" id="vA">3.33 u/s²</div></div>
+  <div class="item"><div class="lbl">速度 v</div><div class="val red" id="vV">4.58 u/s</div></div>
+  <div class="item">
+    <div class="lbl">动能 Ek</div><div class="val gold" id="vEk">10.5 u</div>
+    <div class="bar-wrap"><div class="bar-fill ek" id="barEk" style="width:60%"></div></div>
+  </div>
+  <div class="item">
+    <div class="lbl">电势能↓ ΔEp</div><div class="val blue" id="vEp">10.0 u</div>
+    <div class="bar-wrap"><div class="bar-fill ep" id="barEp" style="width:60%"></div></div>
+  </div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>电压 U (V)</label><input type="range" id="uSlider" min="2" max="20" value="10" step="0.1"><span class="val" id="uVal">10.0</span></div>
+  <div class="slider-grp"><label>初速 v₀</label><input type="range" id="vSlider" min="0.5" max="5" value="1" step="0.1"><span class="val" id="vVal">1.0</span></div>
+  <div class="slider-grp"><label>间距 d</label><input type="range" id="dSlider" min="1" max="5" value="3" step="0.1"><span class="val" id="dVal">3.0</span></div>
+  <div class="slider-grp"><label>电荷 q</label><input type="range" id="qSlider" min="-5" max="5" value="-1" step="0.1"><span class="val" id="qVal">-1.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.Fog(0x0d1117,8,30);
+
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,25);
+camera.position.set(2,3,7);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0,0);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=16;
+controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);
+key.position.set(8,10,5);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=0.2;key.shadow.camera.far=30;
+key.shadow.camera.left=-10;key.shadow.camera.right=10;
+key.shadow.camera.top=10;key.shadow.camera.bottom=-10;
+key.shadow.bias=-0.00005;key.shadow.normalBias=0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-3,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-5));
+scene.add(new THREE.PointLight(0xffffff,3,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,20,12,64,0x30363d,0x1a1e28);
+grid.position.y=-2.8;root.add(grid);
+
+const plateGrp=new THREE.Group();root.add(plateGrp);
+const fieldGrp=new THREE.Group();root.add(fieldGrp);
+const particleGrp=new THREE.Group();root.add(particleGrp);
+const trailGrp=new THREE.Group();root.add(trailGrp);
+const arrowGrp=new THREE.Group();root.add(arrowGrp);
+const ringGrp=new THREE.Group();root.add(ringGrp);
+
+let U=10,v0=1,d=3,charge=-1;
+const mass=1;
+const plateH=2.5,plateW=2.2,plateThick=0.08;
+
+function disposeGroup(grp){
+  while(grp.children.length>0){
+    const ch=grp.children[0];
+    if(ch.geometry)ch.geometry.dispose();
+    if(ch.material){
+      if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+      else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}
+    }
+    grp.remove(ch);
+  }
+}
+
+function buildPlates(){
+  disposeGroup(plateGrp);
+  const geom=new THREE.BoxGeometry(plateThick,plateH,plateW);
+  const matNeg=new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.13,metalness:0.85,emissive:0x000033,emissiveIntensity:0.7});
+  const matPos=new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.13,metalness:0.85,emissive:0x330000,emissiveIntensity:0.7});
+  const leftP=new THREE.Mesh(geom,matNeg);leftP.position.set(-d/2,0,0);leftP.castShadow=true;plateGrp.add(leftP);
+  const rightP=new THREE.Mesh(geom,matPos);rightP.position.set(d/2,0,0);rightP.castShadow=true;plateGrp.add(rightP);
+  const glowGeom=new THREE.BoxGeometry(0.02,plateH+0.15,plateW+0.15);
+  const gL=new THREE.Mesh(glowGeom,new THREE.MeshBasicMaterial({color:0x4488ff,transparent:true,opacity:0.22,depthWrite:false}));
+  gL.position.copy(leftP.position);plateGrp.add(gL);
+  const gR=new THREE.Mesh(glowGeom,new THREE.MeshBasicMaterial({color:0xff6644,transparent:true,opacity:0.22,depthWrite:false}));
+  gR.position.copy(rightP.position);plateGrp.add(gR);
+}
+
+function buildApertureRing(){
+  disposeGroup(ringGrp);
+  const torusGeom=new THREE.TorusGeometry(0.2,0.04,8,16);
+  const torusMat=new THREE.MeshStandardMaterial({color:0xffcc44,roughness:0.15,metalness:0.7,emissive:0x331100,emissiveIntensity:1.0});
+  const ring=new THREE.Mesh(torusGeom,torusMat);
+  ring.position.set(d/2,0,0);
+  ring.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2);
+  ringGrp.add(ring);
+  const ring2=new THREE.Mesh(new THREE.TorusGeometry(0.22,0.02,8,16),
+    new THREE.MeshBasicMaterial({color:0xffcc44,transparent:true,opacity:0.4,depthWrite:false}));
+  ring2.position.copy(ring.position);
+  ring2.quaternion.copy(ring.quaternion);
+  ringGrp.add(ring2);
+}
+
+function buildField(){
+  disposeGroup(fieldGrp);
+  const nY=Math.max(3,Math.floor(plateH/0.7));
+  const nZ=Math.max(3,Math.floor(plateW/0.7));
+  const spY=plateH*0.85/(nY-1);
+  const spZ=plateW*0.85/(nZ-1);
+  const nX=Math.max(2,Math.floor(d/0.4));
+  const arrowGeom=new THREE.ConeGeometry(0.04,0.14,5);
+  const arrowMat=new THREE.MeshStandardMaterial({color:0xffaa44,roughness:0.25,metalness:0.05,emissive:0x221100,emissiveIntensity:0.5});
+  for(let i=0;i<nY;i++){
+    for(let j=0;j<nZ;j++){
+      const y=(i-(nY-1)/2)*spY;
+      const z=(j-(nZ-1)/2)*spZ;
+      for(let k=0;k<nX;k++){
+        const x=-d/2+0.15+(d-0.3)*(k+0.5)/nX;
+        const arr=new THREE.Mesh(arrowGeom,arrowMat);
+        arr.position.set(x,y,z);
+        arr.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(-1,0,0));
+        fieldGrp.add(arr);
+      }
+    }
+  }
+}
+
+let E=U/d,ax=Math.abs(charge)*U/(d*mass)*(charge<0?1:-1);
+let particle={x:-d/2-0.7,y:0,vx:v0,vy:0,active:true};
+let trailPoints=[];
+let trailLine=null;
+const trailGeom=new THREE.BufferGeometry();
+const trailMat=new THREE.LineBasicMaterial({color:0xffcc44,transparent:true,opacity:0.85,linewidth:1});
+trailLine=new THREE.Line(trailGeom,trailMat);
+trailLine.visible=false;trailGrp.add(trailLine);
+
+function resetParticle(){
+  particle.x=-d/2-0.7;
+  particle.y=0;
+  particle.vx=v0;
+  particle.vy=0;
+  particle.active=true;
+  trailPoints.length=0;
+  syncTrailLine();
+  syncPos();
+}
+
+const particleNode=new THREE.Group();
+(function initParticleMesh(){
+  const glowGeom=new THREE.SphereGeometry(0.1,12,12);
+  const coreGeom=new THREE.SphereGeometry(0.07,8,8);
+  const glowMat=new THREE.MeshBasicMaterial({color:0x44ddff,transparent:true,opacity:0.35,depthWrite:false});
+  const coreMat=new THREE.MeshStandardMaterial({color:0x88eeff,roughness:0.1,metalness:0.3,emissive:0x004466,emissiveIntensity:1.5});
+  particleNode.add(new THREE.Mesh(glowGeom,glowMat));
+  particleNode.add(new THREE.Mesh(coreGeom,coreMat));
+  particleGrp.add(particleNode);
+})();
+
+const veloArrow=new THREE.Group();
+(function initVeloArrowBg(){
+  const coneGeom=new THREE.ConeGeometry(0.06,0.2,6);
+  coneGeom.rotateZ(-Math.PI/2);
+  const coneMat=new THREE.MeshStandardMaterial({color:0x44ff66,roughness:0.2,metalness:0.1,emissive:0x003300,emissiveIntensity:1.2});
+  const cone=new THREE.Mesh(coneGeom,coneMat);
+  cone.position.set(0.22,0,0);
+  veloArrow.add(cone);
+  const cylGeom=new THREE.CylinderGeometry(0.025,0.025,0.44,6);
+  cylGeom.rotateZ(-Math.PI/2);
+  const cylMat=new THREE.MeshStandardMaterial({color:0x44ff66,roughness:0.2,metalness:0.1,emissive:0x003300,emissiveIntensity:1.2});
+  const cyl=new THREE.Mesh(cylGeom,cylMat);
+  cyl.position.set(0.11,0,0);
+  veloArrow.add(cyl);
+})();
+
+function syncPos(){
+  particleNode.position.set(particle.x,0,0);
+  veloArrow.position.copy(particleNode.position);
+  const vMag=Math.sqrt(particle.vx*particle.vx+particle.vy*particle.vy);
+  const scl=Math.min(1.2,vMag*0.23);
+  veloArrow.scale.set(scl,scl,scl);
+  veloArrow.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),new THREE.Vector3(Math.sign(particle.vx)||1,0,0));
+  arrowGrp.add(veloArrow);
+}
+
+function syncTrailLine(){
+  if(trailPoints.length<2){trailLine.visible=false;return;}
+  trailLine.visible=true;
+  const pts=trailPoints.map(p=>new THREE.Vector3(p.x,p.y,0));
+  trailGeom.setFromPoints(pts);
+}
+
+function fullRebuild(){
+  E=U/d;
+  ax=Math.abs(charge)*U/(d*mass)*(charge<0?1:-1);
+  buildPlates();
+  buildApertureRing();
+  buildField();
+  resetParticle();
+  updateUI();
+}
+
+function updateUI(){
+  document.getElementById('vE').textContent=E.toFixed(2)+' V/m';
+  const aAbs=Math.abs(ax);
+  document.getElementById('vA').textContent=aAbs.toFixed(2)+' u/s²';
+  const vFinal=Math.sqrt(v0*v0+2*aAbs*d);
+  document.getElementById('vV').textContent=vFinal.toFixed(2)+' u/s';
+  const EkFinal=0.5*mass*vFinal*vFinal;
+  const EkMax=0.5*mass*(v0*v0+2*aAbs*2*d);
+  const EkPct=Math.min(100,((EkFinal-0.5*mass*v0*v0)/Math.max(0.01,EkMax-0.5*mass*v0*v0))*100);
+  document.getElementById('vEk').textContent=EkFinal.toFixed(1)+' u';
+  document.getElementById('barEk').style.width=EkPct.toFixed(0)+'%';
+  const dEp=Math.abs(charge)*U;
+  const dEpMax=Math.abs(charge)*U*1.5;
+  const dEpPct=Math.min(100,(dEp/Math.max(0.01,dEpMax))*100);
+  document.getElementById('vEp').textContent=dEp.toFixed(1)+' u';
+  document.getElementById('barEp').style.width=dEpPct.toFixed(0)+'%';
+  document.getElementById('uVal').textContent=U.toFixed(1);
+  document.getElementById('vVal').textContent=v0.toFixed(1);
+  document.getElementById('dVal').textContent=d.toFixed(1);
+  document.getElementById('qVal').textContent=charge.toFixed(1);
+}
+
+function animateParticle(dt){
+  if(!particle.active)return;
+  const halfD=d/2;
+  particle.x+=particle.vx*dt;
+  if(particle.x>-halfD&&particle.x<halfD){
+    particle.vx+=ax*dt;
+  }
+  trailPoints.push({x:particle.x,y:0});
+  syncPos();
+  syncTrailLine();
+  if(particle.x>halfD+1.2){
+    resetParticle();
+  }
+}
+
+document.getElementById('uSlider').addEventListener('input',function(){U=parseFloat(this.value);fullRebuild();});
+document.getElementById('vSlider').addEventListener('input',function(){v0=parseFloat(this.value);fullRebuild();});
+document.getElementById('dSlider').addEventListener('input',function(){d=parseFloat(this.value);fullRebuild();});
+document.getElementById('qSlider').addEventListener('input',function(){charge=parseFloat(this.value);fullRebuild();});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(2,3,7);controls.target.set(0,0,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  controls.update();
+  animateParticle(dt*0.5);
+  renderer.render(scene,camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+</html>
