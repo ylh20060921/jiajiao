@@ -560,7 +560,7 @@
     transform-origin:0 0;                 /* 左上角为缩放原点：translate 到卡片位置 + scale 到卡片尺寸，视觉等价于从卡片放大 */
     animation:viewerOpen .4s cubic-bezier(.34,1.56,.64,1) forwards;
     will-change:transform,opacity;
-    z-index:100;
+    z-index:9999;
   }
   /* 动画期间降级重绘内容：iframe 有独立渲染进程，transform 缩放期间每帧参与合成（卡顿主因）→ 隐藏；毛玻璃同理关闭 */
   .viewer-enter .viewer-main{visibility:hidden}
@@ -1291,10 +1291,11 @@ function renderViewer(model){
   const sx=rect?Math.max(.05,rect.w/vw):1;
   const sy=rect?Math.max(.05,rect.h/vh):1;
   return `
-    <header class="topbar" style="z-index:200;justify-content:flex-end">  <!-- z-index高于viewer-enter(100)：全屏预览放大后返回按钮不被盖住；viewer模式不展示主页logo -->
-      <button class="topbar-btn btn-ghost" onclick="goList()">‹ 返回列表</button>
-    </header>
-    <div class="viewer-page viewer-enter" style="--ox:${ox};--oy:${oy};--sx:${sx};--sy:${sy}">
+    <div class="viewer-enter" style="--ox:${ox};--oy:${oy};--sx:${sx};--sy:${sy};display:flex;flex-direction:column;z-index:9999">
+      <header class="topbar" style="flex-shrink:0">
+        <button class="topbar-btn btn-ghost" onclick="goList()">‹ 返回列表</button>
+      </header>
+      <div class="viewer-page">
       <aside class="viewer-side">
         <h2>${escapeHtml(model.originalName)}</h2>
         <div class="meta">${fmtSize(model.size)}<br>上传于 ${fmtDateTime(model.createdAt)}</div>
@@ -1318,6 +1319,7 @@ function renderViewer(model){
       <main class="viewer-main">
         <iframe id="modelFrame" src="about:blank"></iframe>
       </main>
+      </div>
     </div>
   `;
 }
@@ -2205,8 +2207,8 @@ async function render(){
   }
   // list
   const localAll=await getAllModels();
-  // 合并本地模型与云端模型
-  const all=[...localAll,...cloudModels];
+  // 合并本地模型与云端模型，已缓存的云端模型只显示本地副本
+  const all=[...localAll,...cloudModels.filter(m=>!hasLocalCopy(m.id))];
   const allTags=getAllTags(all);
   const filtered=filterModels(all,state.q,state.tag,state.favOnly);
   const total=filtered.length;
