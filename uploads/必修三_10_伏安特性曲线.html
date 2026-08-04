@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>导体的伏安特性曲线 — 3D交互模型</title>
+<style>
+:root{--bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;--text-dim:#8b949e;--accent-blue:#58a6ff;--accent-gold:#d2991d;--accent-red:#f85149;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);--slider-track:#30363d;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+#top-panel{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:10px 22px;display:flex;gap:16px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.item{text-align:center}.item .lbl{font-size:10px;color:var(--text-dim)}.item .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.val.blue{color:var(--accent-blue)}.val.gold{color:var(--accent-gold)}.val.red{color:var(--accent-red)}.val.green{color:var(--accent-green)}
+#controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:12px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+button{background:var(--slider-track);border:none;color:var(--text-dim);font-size:11px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;transition:all 0.2s}
+button.active{background:linear-gradient(135deg,var(--accent-blue),#4890d0);color:#fff;box-shadow:0 0 12px rgba(88,166,255,0.3)}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;background:var(--slider-track)}
+.slider-grp input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">元件类型</div><div class="val gold" id="vType">定值电阻</div></div>
+  <div class="item"><div class="lbl">电压 U</div><div class="val blue" id="vU">3.0 V</div></div>
+  <div class="item"><div class="lbl">电流 I</div><div class="val red" id="vI">0.30 A</div></div>
+  <div class="item"><div class="lbl">电阻 R</div><div class="val green" id="vR">10.0 Ω</div></div>
+</div>
+<div id="controls">
+  <button data-comp="resistor" class="active">定值电阻</button>
+  <button data-comp="diode">二极管</button>
+  <button data-comp="bulb">小灯泡</button>
+  <div class="slider-grp"><label>电压 U (V)</label><input type="range" id="uSlider" min="0" max="6" value="3" step="0.1"><span class="val" id="uVal">3.0</span></div>
+  <button id="sweepBtn">自动扫描</button>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);scene.fog=new THREE.Fog(0x0d1117,8,30);
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(0,4.5,7);camera.lookAt(0,0.2,0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0.2,0);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=14;controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);key.position.set(6,8,4);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=0.2;key.shadow.camera.far=20;
+key.shadow.camera.left=-8;key.shadow.camera.right=8;key.shadow.camera.top=8;key.shadow.camera.bottom=-8;key.shadow.bias=-0.00005;scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-4,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-6));
+scene.add(new THREE.PointLight(0xffffff,2.5,10).position.set(0,5,3));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4.5,16,10,48,0x30363d,0x1a1e28);grid.position.y=-2.2;root.add(grid);
+const graphGrp=new THREE.Group();root.add(graphGrp);
+const compGrp=new THREE.Group();root.add(compGrp);
+const curveGrp=new THREE.Group();root.add(curveGrp);
+
+let component='resistor', Uv=3, sweepOn=false, sweepPhase=0;
+const history=[];
+
+function disposeGroup(grp){while(grp.children.length>0){const ch=grp.children[0];if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}}grp.remove(ch);}}
+
+function computeI(U,c){if(c==='resistor')return U/10;if(c==='diode')return U>0.5?Math.max(0,(U-0.5)*0.3-Math.pow(U-0.5,2)*0.02):U<-1?-0.001:0.0001;if(c==='bulb')return U<=0?0:U/(8+U*2);return 0;}
+function computeR(U,c){const I=computeI(U,c);return Math.abs(I)>1e-6?U/I:1e9;}
+
+function buildGraph(){
+  disposeGroup(graphGrp);
+  const hw=2.2, hh=1.5;
+  const framePts=[new THREE.Vector3(-hw,-hh,0.01),new THREE.Vector3(hw,-hh,0.01),new THREE.Vector3(hw,hh,0.01),new THREE.Vector3(-hw,hh,0.01),new THREE.Vector3(-hw,-hh,0.01)];
+  const fg=new THREE.BufferGeometry().setFromPoints(framePts);
+  const frame=new THREE.Line(fg,new THREE.LineBasicMaterial({color:0x58a6ff}));graphGrp.add(frame);
+  const planeG=new THREE.PlaneGeometry(hw*2,hh*2);
+  const planeM=new THREE.MeshBasicMaterial({color:0x111820,opacity:0.7,transparent:true,side:THREE.DoubleSide,depthWrite:false});
+  const plane=new THREE.Mesh(planeG,planeM);plane.position.z=-0.01;graphGrp.add(plane);
+  for(let i=0;i<=6;i++){const x=-hw+i*hw/3;const v=i*2;const lp=[new THREE.Vector3(x,-hh-0.08,0),new THREE.Vector3(x,-hh+0.05,0)];
+    const lg=new THREE.BufferGeometry().setFromPoints(lp);graphGrp.add(new THREE.Line(lg,new THREE.LineBasicMaterial({color:0x30363d})));
+    if(v<=6){const sp=makeLabel(v+'V',x,-hh-0.2,0,0.3,0.12,'#8b949e');graphGrp.add(sp);}}
+  for(let i=0;i<=6;i++){const y=-hh+i*hh/3;const vv=(i*0.2).toFixed(1);const lp2=[new THREE.Vector3(-hw-0.08,y,0),new THREE.Vector3(-hw+0.05,y,0)];
+    const lg2=new THREE.BufferGeometry().setFromPoints(lp2);graphGrp.add(new THREE.Line(lg2,new THREE.LineBasicMaterial({color:0x30363d})));
+    const sp=makeLabel(vv+'A',-hw-0.35,y,0,0.25,0.12,'#8b949e');graphGrp.add(sp);}
+  makeLabel('U / V',hw+0.15,-hh-0.2,0,0.3,0.14,'#58a6ff');
+  makeLabel('I / A',-hw-0.4,hh+0.15,0,0.35,0.14,'#58a6ff');
+}
+
+function makeLabel(text,x,y,z,w,h,color){
+  const c=document.createElement('canvas');c.width=128;c.height=32;
+  const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.font='bold 20px Inter';ctx.textAlign='center';ctx.fillText(text,64,24);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(w,h,1);sp.position.set(x,y,z);return sp;
+}
+
+function buildComponent(){
+  disposeGroup(compGrp);
+  if(component==='resistor'){
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.2,0.2,0.8,16),new THREE.MeshStandardMaterial({color:0xddaa66,roughness:0.4,metalness:0.2}));
+    body.position.set(0,0.8,0);body.rotation.z=Math.PI/2;compGrp.add(body);
+    for(let s=-1;s<=1;s+=2){const col=new THREE.Mesh(new THREE.CylinderGeometry(0.05,0.05,0.2,8),new THREE.MeshStandardMaterial({color:0x889999,roughness:0.2,metalness:0.9}));
+      col.position.set(s*0.55,0.8,0);col.rotation.z=Math.PI/2;compGrp.add(col);}
+    makeLabel('R=10Ω',0,0.3,0,0.6,0.16,'#d2991d');
+  }else if(component==='diode'){
+    const body=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.5,16),new THREE.MeshStandardMaterial({color:0x222222,roughness:0.3,metalness:0.4}));
+    body.position.set(0,0.8,0);body.rotation.z=Math.PI/2;compGrp.add(body);
+    const tri=new THREE.Mesh(new THREE.ConeGeometry(0.15,0.25,3),new THREE.MeshStandardMaterial({color:0x444444,roughness:0.2,metalness:0.5}));
+    tri.position.set(0.35,0.8,0);tri.rotation.z=-Math.PI/2;compGrp.add(tri);
+    const stripe=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.13,0.05,16),new THREE.MeshBasicMaterial({color:0xffffff}));
+    stripe.position.set(-0.35,0.8,0);stripe.rotation.z=Math.PI/2;compGrp.add(stripe);
+    for(let s=-1;s<=1;s+=2){const col=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,0.15,8),new THREE.MeshStandardMaterial({color:0x889999,roughness:0.2,metalness:0.9}));
+      col.position.set(s*0.65,0.8,0);col.rotation.z=Math.PI/2;compGrp.add(col);}
+    makeLabel('二极管',0,0.3,0,0.5,0.16,'#d2991d');
+  }else if(component==='bulb'){
+    const bulb=new THREE.Mesh(new THREE.SphereGeometry(0.2,16,16),new THREE.MeshPhysicalMaterial({color:0xffeedd,roughness:0.1,metalness:0.05,opacity:0.7,transparent:true,clearcoat:0.3}));
+    bulb.position.set(0,0.8,0);compGrp.add(bulb);
+    const base=new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.14,0.3,12),new THREE.MeshStandardMaterial({color:0x888888,roughness:0.3,metalness:0.8}));
+    base.position.set(-0.2,0.8,0);base.rotation.z=Math.PI/2;compGrp.add(base);
+    makeLabel('灯泡 6V/3W','',0,0.25,0,0.7,0.16,'#d2991d');
+  }
+}
+
+function buildCurve(){
+  disposeGroup(curveGrp);
+  const hw=2.2,hh=1.5;const pts=[];const nSteps=200;
+  history.length=0;
+  for(let i=0;i<=nSteps;i++){
+    const U=i*6/nSteps;const I=computeI(U,component);
+    const px=-hw+U*2*hw/6;const py=-hh+I*2*hh/1.2;
+    pts.push(new THREE.Vector3(px,py,0.02));history.push({U,I});
+  }
+  const cg=new THREE.BufferGeometry().setFromPoints(pts);
+  const cl=new THREE.Line(cg,new THREE.LineBasicMaterial({color:0x3fb950}));curveGrp.add(cl);
+  if(Uv>=0){
+    const Icur=computeI(Uv,component);
+    const px=-hw+Uv*2*hw/6;const py=-hh+Icur*2*hh/1.2;
+    const dotG=new THREE.SphereGeometry(0.06,12,12);
+    const dot=new THREE.Mesh(dotG,new THREE.MeshBasicMaterial({color:0x58a6ff}));
+    dot.position.set(px,py,0.04);curveGrp.add(dot);
+    if(component==='bulb'){
+      const dI=computeI(Uv+0.01,component)-computeI(Uv-0.01,component);
+      const dU=0.02;const rDyn=dU/(Math.abs(dI)>1e-9?dI:1e-9);
+      const slope=Uv>0?dI/dU:0;const tanX=0.5;const tanY=slope*tanX;
+      const lnPts=[new THREE.Vector3(px-tanX,py-tanY,0.03),new THREE.Vector3(px+tanX,py+tanY,0.03)];
+      const ln=new THREE.Line(new THREE.BufferGeometry().setFromPoints(lnPts),new THREE.LineBasicMaterial({color:0xffaa00,linewidth:1}));
+      curveGrp.add(ln);
+    }
+  }
+}
+
+function updateUI(){
+  const Icur=computeI(Uv,component);const R=computeR(Uv,component);
+  document.getElementById('vU').textContent=Uv.toFixed(1)+' V';
+  document.getElementById('vI').textContent=Icur.toFixed(3)+' A';
+  document.getElementById('vR').textContent=(R>1e6?'∞':R.toFixed(1)+' Ω');
+  document.getElementById('uVal').textContent=Uv.toFixed(1);
+}
+
+function fullRebuild(){buildGraph();buildComponent();buildCurve();updateUI();}
+
+document.querySelectorAll('button[data-comp]').forEach(b=>b.addEventListener('click',function(){
+  document.querySelectorAll('button[data-comp]').forEach(x=>x.classList.remove('active'));this.classList.add('active');
+  component=this.dataset.comp;fullRebuild();
+}));
+document.getElementById('uSlider').addEventListener('input',function(){Uv=parseFloat(this.value);fullRebuild();});
+document.getElementById('sweepBtn').addEventListener('click',function(){sweepOn=!sweepOn;this.textContent=sweepOn?'停止扫描':'自动扫描';this.classList.toggle('active',sweepOn);});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(0,4.5,7);camera.lookAt(0,0.2,0);controls.target.set(0,0.2,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  if(sweepOn){sweepPhase+=dt*0.6;Uv=3+3*Math.sin(sweepPhase);document.getElementById('uSlider').value=Uv;fullRebuild();}
+  controls.update();renderer.render(scene,camera);
+}
+fullRebuild();requestAnimationFrame(animate);
+</script>
+</html>
