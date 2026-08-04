@@ -775,6 +775,37 @@
 <body>
 <canvas id="particles" class="particles-bg"></canvas>
 <div id="app"></div>
+<div id="shareOverlay" class="share-overlay">
+  <div class="share-panel">
+    <div class="share-panel-header">
+      <span>文件共享</span>
+      <button class="share-panel-close" onclick="closeSharePanel()">✕</button>
+    </div>
+    <div class="share-panel-body">
+      <div>
+        <div class="share-section-title">GitHub Token</div>
+        <div class="share-token-wrap">
+          <input type="password" id="shareTokenInput" class="share-token-input" placeholder="输入 GitHub Personal Access Token">
+          <button class="share-file-btn" onclick="toggleTokenVisibility()" id="toggleTokenBtn">👁 显示</button>
+        </div>
+        <button class="share-file-btn" onclick="saveShareToken()" style="margin-top:6px">💾 保存</button>
+      </div>
+      <div id="shareStatusMsg"></div>
+      <div class="share-dropzone" id="shareDropzone">
+        <div class="share-dropzone-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/></svg></div>
+        <div class="share-dropzone-text">点击或拖拽文件到这里上传</div>
+        <div class="share-dropzone-hint">上传到 GitHub 仓库</div>
+        <input type="file" id="shareFileInput" multiple hidden>
+      </div>
+      <div id="shareUploadProgress" class="share-upload-progress" style="display:none"><div id="shareProgressBar" class="share-upload-progress-bar" style="width:0"></div></div>
+      <div id="shareProgressText" style="font-size:11px;color:var(--muted);text-align:center"></div>
+      <div>
+        <div class="share-section-title">云端文件</div>
+        <div id="shareFileList" class="share-file-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <script>
 // ============================================================
@@ -2701,6 +2732,8 @@ const SHARE_REPO='ylh20060921/physics-model-sharing';
 const SHARE_API='https://api.github.com/repos/'+SHARE_REPO+'/contents/uploads';
 const SHARE_RAW='https://raw.githubusercontent.com/'+SHARE_REPO+'/main/uploads/';
 let shareUploadFiles=[];
+let shareKnownFiles=new Set();
+let sharePollTimer=null;
 
 function getShareToken(){return localStorage.getItem('share_github_token')||'';}
 function setShareToken(t){localStorage.setItem('share_github_token',t);}
@@ -2732,6 +2765,7 @@ function saveShareToken(){
   setShareToken(v);
   const msg=document.getElementById('shareStatusMsg');
   if(msg)msg.innerHTML=v?'<div class="share-status ok">Token 已保存到本地</div>':'<div class="share-status err">请输入 Token</div>';
+  if(v)initSharePolling();
 }
 async function refreshShareFiles(){
   const list=document.getElementById('shareFileList');
@@ -2746,8 +2780,9 @@ async function refreshShareFiles(){
       return;
     }
     const files=await resp.json();
-    if(!Array.isArray(files)){list.innerHTML='<div class="share-status info">仓库暂无文件</div>';return;}
-    if(files.length===0){list.innerHTML='<div class="share-status info">仓库暂无文件，上传第一个文件吧</div>';return;}
+    if(!Array.isArray(files)){list.innerHTML='<div class="share-status info">仓库暂无文件</div>';shareKnownFiles=new Set();return;}
+    if(files.length===0){list.innerHTML='<div class="share-status info">仓库暂无文件，上传第一个文件吧</div>';shareKnownFiles=new Set();return;}
+    shareKnownFiles=new Set(files.map(f=>f.name+'|'+f.sha));
     list.innerHTML=files.map(f=>{
       const name=f.name||'';
       const size=f.size?fmtSize(f.size):'';
@@ -2774,6 +2809,39 @@ async function refreshShareFiles(){
   }catch(e){
     list.innerHTML='<div class="share-status err">网络错误：'+escapeHtml(e.message||String(e))+'</div>';
   }
+}
+async function fetchShareFileList(){
+  try{
+    const token=getShareToken();
+    if(!token)return null;
+    const resp=await fetch(SHARE_API,{headers:{Authorization:'Bearer '+token}});
+    if(!resp.ok)return null;
+    const files=await resp.json();
+    if(!Array.isArray(files))return null;
+    return files;
+  }catch(e){return null;}
+}
+async function autoPollShareFiles(){
+  const files=await fetchShareFileList();
+  if(!files)return;
+  const currentSet=new Set(files.map(f=>f.name+'|'+f.sha));
+  const hasNew=[...currentSet].some(k=>!shareKnownFiles.has(k));
+  if(hasNew&&shareKnownFiles.size>0){
+    toast('发现新文件','ok');
+  }
+  shareKnownFiles=currentSet;
+  const list=document.getElementById('shareFileList');
+  if(!list||!document.getElementById('shareOverlay').classList.contains('show'))return;
+  refreshShareFiles();
+}
+function initSharePolling(){
+  if(sharePollTimer){clearInterval(sharePollTimer);sharePollTimer=null;}
+  const token=getShareToken();
+  if(!token)return;
+  fetchShareFileList().then(files=>{
+    if(files)shareKnownFiles=new Set(files.map(f=>f.name+'|'+f.sha));
+  });
+  sharePollTimer=setInterval(autoPollShareFiles,30000);
 }
 async function deleteShareFile(filename,sha){
   if(!confirm('确认从云端删除 '+filename+'？'))return;
@@ -2841,6 +2909,7 @@ async function start(){
     initScrollGradientBlur();
     initLightTracking();
     initShortcuts();
+    initSharePolling();
   }catch(e){
     document.getElementById('app').innerHTML=`<div class="empty"><div class="empty-icon">${IC_WARN}</div><h2>启动失败</h2><p>${escapeHtml(e.message||String(e))}</p><p style="color:var(--muted)">请确认浏览器支持 IndexedDB</p></div>`;
     console.error('启动失败',e);
