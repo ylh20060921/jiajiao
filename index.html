@@ -1509,7 +1509,13 @@ async function renderFilesApp(main){
   if(state.filesView==='upload'){main.innerHTML=renderFilesUpload();bindFilesUpload();return;}
   const all=await dbAll(STORE_FILES);
   const folders=await dbAll(STORE_FOLDERS);
-  const tags=getAllTags(all);
+  // 合并云端文件（过滤已缓存的）
+  let mergedAll=all;
+  if(cloudFiles.length>0){
+    const cloudOnly=cloudFiles.filter(cf=>!hasLocalCopyFile(cf.id));
+    mergedAll=[...cloudOnly,...all];
+  }
+  const tags=getAllTags(mergedAll);
   const cur=state.filesFolderId;
   const depth=folderDepthMap(folders);
   const subFolders=folders.filter(x=>(x.parentId||null)===(cur||null)).sort((a,b)=>a.name.localeCompare(b.name,'zh-CN'));
@@ -1517,13 +1523,13 @@ async function renderFilesApp(main){
   const counts={};
   all.forEach(f=>{const k=f.folderId||null;counts[k]=(counts[k]||0)+1;});
   folders.forEach(x=>{const k=x.parentId||null;counts[k]=(counts[k]||0)+1;});
-  const list=all.filter(f=>{
+  const list=mergedAll.filter(f=>{
     if((f.folderId||null)!==(cur||null))return false;   // 只显示当前文件夹的文件
     const okT=!state.filesTag||(f.tags||[]).includes(state.filesTag);
     const okQ=!state.filesQ||fuzzyMatch(f.originalName||'',state.filesQ)||(f.tags||[]).some(t=>fuzzyMatch(t,state.filesQ));
     return okT&&okQ;
   }).sort((a,b)=>((b.fav?1:0)-(a.fav?1:0))||(b.createdAt-a.createdAt));
-  main.innerHTML=renderFilesList(list,tags,all.length,subFolders,folders,depth,counts);
+  main.innerHTML=renderFilesList(list,tags,mergedAll.length,subFolders,folders,depth,counts);
   bindFilesList();
 }
 function renderFilesList(list,tags,total,subFolders,folders,depth,counts){
@@ -1556,6 +1562,7 @@ function renderFilesList(list,tags,total,subFolders,folders,depth,counts){
       </select>
       <div class="topbar-spacer"></div>
       <button class="topbar-btn btn-ghost" onclick="newFolder()">＋ 新建文件夹</button>
+      ${(()=>{const uncached=cloudFiles.filter(function(cf){return !hasLocalCopyFile(cf.id);});return uncached.length>0?`<button class="topbar-btn btn-cache" onclick="cacheAllCloudFiles()">⬇ 缓存全部(${uncached.length}个)</button>`:'';})()}
       <button class="topbar-btn btn-accent" onclick="goFilesUpload()">${IC_UPLOAD} 上传</button>
     </header>
     <div class="content">
@@ -1592,9 +1599,13 @@ function folderRow(f,cnt){
 function fileRow(f){
   const ft=fileTypeOf(f.originalName);
   const isImg=f.originalName&&/\.(png|jpe?g|gif|webp|svg|bmp)$/i.test(f.originalName);
+  const isCloud=f.cloud===true;
+  const hasCopy=isCloud&&hasLocalCopyFile(f.id);
+  const localId=hasCopy?getLocalCopyFileId(f.id):null;
+  const cardOnclick=isCloud?`openCloudFile('${f.id}',event)`:'';
   return `
-  <div class="card card-flat card-list" data-id="${f.id}">
-    ${favStar(f,STORE_FILES)}
+  <div class="card card-flat card-list" data-id="${f.id}"${cardOnclick?` onclick="${cardOnclick}"`:''}>
+    ${!isCloud?favStar(f,STORE_FILES):''}
     <div class="file-ico" style="position:relative">${f.thumb?`<img class="thumb" src="${f.thumb}" alt="">`:ft.ico}</div>
     <div class="list-main">
       <div class="list-name" title="${escapeHtml(f.originalName)}">${escapeHtml(f.originalName)}</div>
@@ -1605,10 +1616,12 @@ function fileRow(f){
       <span>${fmtDate(f.createdAt)}</span>
     </div>
     <div class="file-act">
-      ${isImg?`<button onclick="previewFile(${f.id})">预览</button>`:''}
-      <button onclick="downloadById('${STORE_FILES}',${f.id},'${ft.mime}')">下载</button>
-      <button onclick="openMoveDialog(${f.id})">移动</button>
-      <button class="del" onclick="deleteFile(${f.id})">删除</button>
+      ${isCloud&&!hasCopy?`<button class="card-cloud-dl" onclick="event.stopPropagation();downloadCloudFileToLocal(getCloudFile('${f.id}')).then(function(){render();}).catch(function(e){alert('下载失败: '+e.message);})">⬇ 下载到本地</button>`:''}
+      ${isCloud&&hasCopy?`<button onclick="event.stopPropagation();previewFile(${localId})">预览</button><button onclick="event.stopPropagation();downloadById('${STORE_FILES}',${localId},'${ft.mime}')">下载</button><button class="del" onclick="event.stopPropagation();deleteFile(${localId})">删除</button>`:''}
+      ${!isCloud?`${isImg?`<button onclick="event.stopPropagation();previewFile(${f.id})">预览</button>`:''}
+      <button onclick="event.stopPropagation();downloadById('${STORE_FILES}',${f.id},'${ft.mime}')">下载</button>
+      <button onclick="event.stopPropagation();openMoveDialog(${f.id})">移动</button>
+      <button class="del" onclick="event.stopPropagation();deleteFile(${f.id})">删除</button>`:''}
     </div>
   </div>`;
 }
@@ -1672,18 +1685,32 @@ async function doFilesUpload(){
   const tags=tagInput?parseTags(tagInput.value):[];
   state.filesTags=tagInput?tagInput.value:'';
   let ok=0,fail=0;
+  const filesForCloud=[];
   for(const f of state.filesUpload){
     try{
       const content=await f.arrayBuffer();
       const ft=fileTypeOf(f.name);
       const thumb=ft.mime.startsWith('image/')?await makeImageThumb(content):'';
       await dbAdd(STORE_FILES,{originalName:f.name,content,size:f.size,note:'',tags,fav:false,createdAt:Date.now(),thumb,folderId:state.filesFolderId});
+      filesForCloud.push(f);
       ok++;
     }catch(e){console.error(e);fail++;}
   }
   state.filesUploadResult={ok:true,msg:`✓ 成功上传 ${ok} 个${fail?'，'+fail+' 个失败':''}`};
   state.filesUpload=[];
   toast(`成功上传 ${ok} 个文件`,'ok');
+  let cloudOk=0;
+  for(const f of filesForCloud){
+    try{
+      const buf=await f.arrayBuffer();
+      const uploaded=await uploadFileToCloud(f.name,buf);
+      if(uploaded)cloudOk++;
+    }catch(e){console.error('云端文件上传失败: '+f.name,e);}
+  }
+  if(cloudOk>0){
+    toast('已同步 '+cloudOk+' 个到云端','ok');
+    await rebuildCloudFilesList();
+  }
   render();
 }
 function makeImageThumb(buf){
@@ -1704,6 +1731,19 @@ function makeImageThumb(buf){
     img.src=url;
   });
 }
+function getCloudFile(id){return cloudFiles.find(function(cf){return cf.id===id;})||null;}
+async function openCloudFile(id,e){
+  e&&e.stopPropagation();
+  const cf=getCloudFile(id);
+  if(!cf)return;
+  let localId=getLocalCopyFileId(id);
+  if(!localId){localId=await downloadCloudFileToLocal(cf);}
+  if(localId){
+    const r=await getBlobById(STORE_FILES,localId);
+    if(r){const url=URL.createObjectURL(r.blob);window.open(url,'_blank');setTimeout(function(){URL.revokeObjectURL(url);},60000);}
+  }
+  render();
+}
 async function previewFile(id){
   const r=await getBlobById(STORE_FILES,id);
   if(!r)return;
@@ -1713,8 +1753,14 @@ async function previewFile(id){
 }
 async function deleteFile(id){
   if(!confirm('确认删除此文件？'))return;
+  // 检查是否为云端文件
+  const cf=cloudFiles.find(function(cf){return hasLocalCopyFile(cf.id)&&getLocalCopyFileId(cf.id)===id;});
   await dbDelete(STORE_FILES,id);
-  toast('已删除','ok');
+  if(cf){
+    const ok=await deleteFileFromCloud(cf.originalName,cf.sha);
+    if(ok){cloudFiles=cloudFiles.filter(function(c){return c.id!==cf.id;});toast('已从云端和本地删除','ok');}
+    else toast('云端删除失败，本地已删除','err');
+  } else {toast('已删除','ok');}
   render();
 }
 function bindFilesList(){
@@ -2872,6 +2918,156 @@ function stopCloudPolling(){
   if(cloudPollTimer){clearInterval(cloudPollTimer);cloudPollTimer=null;}
 }
 
+// ===== 文件库云端同步 =====
+const CLOUD_FILES_API='https://api.github.com/repos/ylh20060921/physics-model-sharing/contents/files';
+const CLOUD_FILES_RAW='https://raw.githubusercontent.com/ylh20060921/physics-model-sharing/main/files';
+let cloudFiles=[];
+let cloudFilesKnownSHAs=new Set();
+let cloudFilesPollTimer=null;
+const CLOUD_FILES_MAP_KEY='mv_cloud2local_files';
+
+function getCloudToLocalFilesMap(){
+  try{return JSON.parse(localStorage.getItem(CLOUD_FILES_MAP_KEY)||'{}');}catch(e){return {};}
+}
+function setCloudToLocalFilesEntry(cloudId,localId){
+  const m=getCloudToLocalFilesMap();m[cloudId]=localId;
+  localStorage.setItem(CLOUD_FILES_MAP_KEY,JSON.stringify(m));
+}
+function getLocalCopyFileId(cloudId){return getCloudToLocalFilesMap()[cloudId]||null;}
+function hasLocalCopyFile(cloudId){return !!getLocalCopyFileId(cloudId);}
+
+async function fetchCloudFiles(){
+  try{
+    const token=getCloudToken();
+    if(!token)return null;
+    const resp=await fetch(CLOUD_FILES_API,{headers:{Authorization:'Bearer '+token}});
+    if(!resp.ok)return null;
+    const files=await resp.json();
+    if(!Array.isArray(files))return null;
+    return files;
+  }catch(e){return null;}
+}
+
+function buildCloudFiles(files){
+  return files.filter(function(f){
+    const n=f.name.toLowerCase();
+    return n.endsWith('.html')||n.endsWith('.htm')||n.endsWith('.jpg')||n.endsWith('.jpeg')||n.endsWith('.png')||n.endsWith('.gif')||n.endsWith('.webp')||n.endsWith('.svg')||n.endsWith('.pdf')||n.endsWith('.doc')||n.endsWith('.docx')||n.endsWith('.xls')||n.endsWith('.xlsx')||n.endsWith('.ppt')||n.endsWith('.pptx')||n.endsWith('.txt')||n.endsWith('.md')||n.endsWith('.zip')||n.endsWith('.rar')||n.endsWith('.7z');
+  }).map(function(f){
+    return {
+      id:'cloudf_'+f.sha.substring(0,12),
+      originalName:f.name,
+      size:f.size||0,note:'',tags:[],
+      fav:false,cloud:true,sha:f.sha,
+      downloadUrl:f.download_url,
+      createdAt:Date.now(),
+      thumb:'',folderId:null
+    };
+  });
+}
+
+async function downloadCloudFileToLocal(cf){
+  const token=getCloudToken();
+  if(!token)throw new Error('Token不可用');
+  const apiUrl=CLOUD_FILES_API+'/'+encodeURIComponent(cf.originalName);
+  const resp=await fetch(apiUrl,{headers:{Authorization:'Bearer '+token}});
+  if(!resp.ok)throw new Error('HTTP '+resp.status);
+  const data=await resp.json();
+  if(!data.content)throw new Error('无文件内容');
+  const binStr=atob(data.content.replace(/\s/g,''));
+  const bytes=new Uint8Array(binStr.length);
+  for(let i=0;i<binStr.length;i++)bytes[i]=binStr.charCodeAt(i);
+  const buffer=bytes.buffer;
+  const ft=fileTypeOf(cf.originalName);
+  const thumb=ft.mime.startsWith('image/')?await makeImageThumb(buffer):'';
+  const localId=await dbAdd(STORE_FILES,{
+    originalName:cf.originalName,
+    content:buffer,size:data.size||cf.size||0,
+    note:'',tags:[],fav:false,
+    createdAt:Date.now(),thumb:thumb||'',
+    folderId:state.filesFolderId||null
+  });
+  setCloudToLocalFilesEntry(cf.id,localId);
+  return localId;
+}
+
+async function uploadFileToCloud(filename,arrayBuffer){
+  const token=getCloudToken();
+  if(!token)return false;
+  try{
+    const bytes=new Uint8Array(arrayBuffer);
+    let bin='';
+    for(let i=0;i<bytes.length;i++)bin+=String.fromCharCode(bytes[i]);
+    const b64=btoa(bin);
+    const apiUrl=CLOUD_FILES_API+'/'+encodeURIComponent(filename);
+    const resp=await fetch(apiUrl,{
+      method:'PUT',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Upload '+filename,content:b64})
+    });
+    return resp.ok;
+  }catch(e){console.error('云端文件上传失败',e);return false;}
+}
+
+async function deleteFileFromCloud(filename,sha){
+  const token=getCloudToken();
+  if(!token)return false;
+  try{
+    const apiUrl=CLOUD_FILES_API+'/'+encodeURIComponent(filename);
+    const resp=await fetch(apiUrl,{
+      method:'DELETE',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Delete '+filename,sha:sha})
+    });
+    return resp.ok;
+  }catch(e){console.error('云端文件删除失败',e);return false;}
+}
+
+async function rebuildCloudFilesList(){
+  const files=await fetchCloudFiles();
+  if(files){cloudFiles=buildCloudFiles(files);}
+}
+
+async function autoPollCloudFiles(){
+  const files=await fetchCloudFiles();
+  if(!files)return;
+  for(const f of files){
+    const id='cloudf_'+f.sha.substring(0,12);
+    if(!cloudFilesKnownSHAs.has(f.sha)){
+      cloudFilesKnownSHAs.add(f.sha);
+      toast('云端有新文件: '+f.name,'ok');
+      await rebuildCloudFilesList();
+      render();
+      return;
+    }
+  }
+}
+
+function initCloudFilesSync(){
+  if(cloudFilesPollTimer)return;
+  rebuildCloudFilesList().then(function(){render();});
+  cloudFilesPollTimer=setInterval(autoPollCloudFiles,30000);
+}
+
+function stopCloudFilesPolling(){
+  if(cloudFilesPollTimer){clearInterval(cloudFilesPollTimer);cloudFilesPollTimer=null;}
+}
+
+async function cacheAllCloudFiles(){
+  const uncached=cloudFiles.filter(function(cf){return !hasLocalCopyFile(cf.id);});
+  if(uncached.length===0){toast('所有云端文件已缓存','ok');return;}
+  let done=0;const total=uncached.length;
+  toast('正在缓存 0/'+total+'...','');
+  for(const cf of uncached){
+    try{
+      await downloadCloudFileToLocal(cf);
+      done++;
+      toast('正在缓存 '+done+'/'+total+'...','');
+    }catch(e){console.error('缓存失败',cf.originalName,e);toast('缓存 '+cf.originalName+' 失败: '+e.message,'err');}
+  }
+  toast('缓存完成！成功 '+done+'/'+total,'ok');
+  render();
+}
+
 // ========== 云端同步 END ========== ---------- 启动 ----------
 async function start(){
   try{
@@ -2883,6 +3079,7 @@ async function start(){
     initLightTracking();
     initShortcuts();
     initCloudSync();
+    initCloudFilesSync();
   }catch(e){
     document.getElementById('app').innerHTML=`<div class="empty"><div class="empty-icon">${IC_WARN}</div><h2>启动失败</h2><p>${escapeHtml(e.message||String(e))}</p><p style="color:var(--muted)">请确认浏览器支持 IndexedDB</p></div>`;
     console.error('启动失败',e);
