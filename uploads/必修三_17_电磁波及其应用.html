@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电磁波及其应用 — 3D交互模型</title>
+<style>
+:root{--bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;--text-dim:#8b949e;--accent-blue:#58a6ff;--accent-gold:#d2991d;--accent-red:#f85149;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);--slider-track:#30363d;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+#top-panel{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:10px 20px;display:flex;gap:16px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.item{text-align:center}.item .lbl{font-size:10px;color:var(--text-dim)}.item .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.val.blue{color:var(--accent-blue)}.val.gold{color:var(--accent-gold)}.val.red{color:var(--accent-red)}.val.green{color:var(--accent-green)}
+#controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+button{background:var(--slider-track);border:none;color:var(--text-dim);font-size:10px;font-weight:700;padding:8px 12px;border-radius:7px;cursor:pointer;transition:all 0.2s}
+button.active{background:linear-gradient(135deg,var(--accent-gold),#e6a817);color:#0d1117;box-shadow:0 0 10px rgba(210,153,29,0.3)}
+#spectrum{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);z-index:9;display:flex;height:22px;border-radius:6px;overflow:hidden;border:1px solid var(--border);background:var(--panel-bg);padding:2px;gap:2px}
+.s-band{flex:1;min-width:40px;border-radius:4px;cursor:pointer;transition:all 0.2s;font-size:7px;color:#fff;text-align:center;line-height:20px;font-weight:700;opacity:0.85}
+.s-band:hover{opacity:1;transform:scaleY(1.3)}
+.s-band.sel{opacity:1;box-shadow:0 0 8px #fff;z-index:1}
+#hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">频段</div><div class="val gold" id="vBand">可见光</div></div>
+  <div class="item"><div class="lbl">频率 f</div><div class="val blue" id="vFreq">5.0×10¹⁴ Hz</div></div>
+  <div class="item"><div class="lbl">波长 λ</div><div class="val red" id="vLambda">600 nm</div></div>
+  <div class="item"><div class="lbl">能量 E=hf</div><div class="val green" id="vEnergy">2.07 eV</div></div>
+</div>
+<div id="spectrum">
+  <div class="s-band" style="background:#440066" data-band="radio">无线电</div>
+  <div class="s-band" style="background:#2244aa" data-band="microwave">微波</div>
+  <div class="s-band" style="background:#224488" data-band="ir">红外</div>
+  <div class="s-band sel" style="background:linear-gradient(90deg,#ff0000,#ff8800,#ffff00,#00ff00,#0088ff,#0000ff,#8800ff)" data-band="visible">可见光</div>
+  <div class="s-band" style="background:#5500aa" data-band="uv">紫外</div>
+  <div class="s-band" style="background:#224488" data-band="xray">X射线</div>
+  <div class="s-band" style="background:#442288" data-band="gamma">γ射线</div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角 · c=λf=3×10⁸ m/s</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);scene.fog=new THREE.Fog(0x0d1117,8,30);
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(4,2,6);camera.lookAt(0,0,0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*0.75;controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,2.0));
+const key=new THREE.DirectionalLight(0xffffff,4.0);key.position.set(6,8,4);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=0.2;key.shadow.camera.far=20;scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-4,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-6));
+scene.add(new THREE.PointLight(0xffffff,2.5,10).position.set(0,5,3));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,16,10,48,0x30363d,0x1a1e28);grid.position.y=-2;root.add(grid);
+const waveGrp=new THREE.Group();root.add(waveGrp);
+const annotGrp=new THREE.Group();root.add(annotGrp);
+const axisGrp=new THREE.Group();root.add(axisGrp);
+
+const bands={
+  radio:{f:1e8,lambda:'3.0 m',name:'无线电',E:4.14e-7},
+  microwave:{f:3e10,lambda:'1.0 cm',name:'微波',E:1.24e-4},
+  ir:{f:3e13,lambda:'10 μm',name:'红外',E:0.124},
+  visible:{f:5e14,lambda:'600 nm',name:'可见光',E:2.07},
+  uv:{f:1e16,lambda:'30 nm',name:'紫外',E:41.4},
+  xray:{f:1e18,lambda:'0.3 nm',name:'X射线',E:4136},
+  gamma:{f:1e21,lambda:'0.3 pm',name:'γ射线',E:4.14e6},
+};
+let curBand='visible',t=0;
+
+function disposeGroup(grp){while(grp.children.length>0){const ch=grp.children[0];if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}}grp.remove(ch);}}
+
+function addText(text,x,y,z,w,h,color){
+  const c=document.createElement('canvas');c.width=256;c.height=40;
+  const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.font='bold 20px Inter';ctx.textAlign='center';ctx.fillText(text,128,28);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(w,h,1);sp.position.set(x,y,z);return sp;
+}
+
+function buildAxes(){
+  disposeGroup(axisGrp);
+  const arrowLen=4;
+  const xArrow=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,arrowLen,8).translate(0,arrowLen/2,0),new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.2}));
+  xArrow.rotation.z=-Math.PI/2;axisGrp.add(xArrow);
+  const yArrow=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,arrowLen*0.6,8).translate(0,arrowLen*0.3,0),new THREE.MeshStandardMaterial({color:0x44ff44,roughness:0.2}));
+  yArrow.rotation.z=-Math.PI/2;yArrow.rotation.x=-Math.PI/2;axisGrp.add(yArrow);
+  const zArrow=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,arrowLen*0.6,8).translate(0,arrowLen*0.6/2,0),new THREE.MeshStandardMaterial({color:0x4444ff,roughness:0.2}));
+  zArrow.position.y=arrowLen*0.3;axisGrp.add(zArrow);
+  annotGrp.add(addText('传播方向 Z',0,0.2,2.3,0.5,0.13,'#4444ff'));
+  annotGrp.add(addText('E场(垂直)',0,1.5,0,0.4,0.12,'#44ff44'));
+  annotGrp.add(addText('B场(水平)',1.8,0,0,0.4,0.12,'#ff4444'));
+}
+
+function updateWave(){
+  disposeGroup(waveGrp);
+  const freqLog=Math.log10(bands[curBand].f);
+  const k=6*(freqLog-7)/12;
+  const L=4,n=80;
+  const eCurve=[],bCurve=[];
+  for(let i=0;i<=n;i++){
+    const z=-L/2+i*L/n;
+    const amp=Math.exp(-(z*z)/(L*L*0.2));
+    const ey=amp*Math.sin(k*z-t*4);
+    const bx=amp*Math.sin(k*z-t*4)*0.8;
+    eCurve.push(new THREE.Vector3(0,ey,z));
+    bCurve.push(new THREE.Vector3(bx,0,z));
+  }
+  const eGeo=new THREE.BufferGeometry().setFromPoints(eCurve);
+  const bGeo=new THREE.BufferGeometry().setFromPoints(bCurve);
+  waveGrp.add(new THREE.Line(eGeo,new THREE.LineBasicMaterial({color:0x44ff44,linewidth:1,transparent:true,opacity:0.8})));
+  waveGrp.add(new THREE.Line(bGeo,new THREE.LineBasicMaterial({color:0xff4444,linewidth:1,transparent:true,opacity:0.8})));
+  for(let i=0;i<=n;i+=4){
+    const z=-L/2+i*L/n;
+    const amp=Math.exp(-(z*z)/(L*L*0.2));
+    const ey=amp*Math.sin(k*z-t*4);
+    const bx=amp*Math.sin(k*z-t*4)*0.8;
+    const eVec=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,Math.abs(ey),6).translate(0,Math.abs(ey)/2,0),new THREE.MeshBasicMaterial({color:0x44ff44,transparent:true,opacity:0.3}));
+    eVec.position.set(0,ey<0?ey:0,z);waveGrp.add(eVec);
+    const bVec=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,Math.abs(bx),6).translate(0,Math.abs(bx)/2,0),new THREE.MeshBasicMaterial({color:0xff4444,transparent:true,opacity:0.3}));
+    bVec.position.set(bx<0?bx:0,0,z);bVec.rotation.z=Math.PI/2;waveGrp.add(bVec);
+  }
+}
+
+function selectBand(band){
+  curBand=band;
+  const b=bands[band];
+  document.getElementById('vBand').textContent=b.name;
+  document.getElementById('vFreq').textContent=formatFreq(b.f);
+  document.getElementById('vLambda').textContent=b.lambda;
+  document.getElementById('vEnergy').textContent=formatEnergy(b.E);
+  document.querySelectorAll('.s-band').forEach(el=>el.classList.toggle('sel',el.dataset.band===band));
+  updateWave();
+}
+
+function formatFreq(f){
+  if(f>=1e15)return (f/1e15).toFixed(1)+'×10¹⁵ Hz';
+  if(f>=1e12)return (f/1e12).toFixed(1)+'×10¹² Hz';
+  if(f>=1e9)return (f/1e9).toFixed(1)+'×10⁹ Hz';
+  if(f>=1e6)return (f/1e6).toFixed(1)+'×10⁶ Hz';
+  return f.toExponential(1)+' Hz';
+}
+function formatEnergy(e){
+  if(e<0.001)return e.toExponential(1)+' eV';
+  if(e<1)return e.toFixed(3)+' eV';
+  if(e<1000)return e.toFixed(1)+' eV';
+  if(e<1e6)return (e/1000).toFixed(1)+' keV';
+  return (e/1e6).toFixed(1)+' MeV';
+}
+
+document.querySelectorAll('.s-band').forEach(b=>b.addEventListener('click',function(){selectBand(this.dataset.band);}));
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(4,2,6);camera.lookAt(0,0,0);controls.target.set(0,0,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);t+=dt;
+  updateWave();controls.update();renderer.render(scene,camera);
+}
+buildAxes();selectBand('visible');requestAnimationFrame(animate);
+</script>
+</html>
