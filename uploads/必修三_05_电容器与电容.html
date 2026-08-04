@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电容与平行板电容器 — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}
+canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10.5px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .formula{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);margin-top:1px}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+@media(max-width:900px){#top-panel{gap:10px;padding:8px 12px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">电容 C</div><div class="val gold" id="vC">11.06 pF</div><div class="formula">C=εᵣε₀·S/d</div></div>
+  <div class="item"><div class="lbl">电荷量 Q</div><div class="val red" id="vQ">11.06×10⁻¹² C</div><div class="formula">Q=C·U</div></div>
+  <div class="item"><div class="lbl">电场 E</div><div class="val blue" id="vE">500 V/m</div><div class="formula">E=U/d</div></div>
+  <div class="item"><div class="lbl">场能 W</div><div class="val gold" id="vW">5.53×10⁻¹² J</div><div class="formula">W=½CU²</div></div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>电压 U (V)</label><input type="range" id="uSlider" min="0.5" max="5.0" value="1.0" step="0.1"><span class="val" id="uVal">1.0</span></div>
+  <div class="slider-grp"><label>间距 d (mm)</label><input type="range" id="dSlider" min="0.5" max="4.0" value="2.0" step="0.1"><span class="val" id="dVal">2.0</span></div>
+  <div class="slider-grp"><label>面积 S (cm²)</label><input type="range" id="sSlider" min="5" max="50" value="25" step="1"><span class="val" id="sVal">25</span></div>
+  <div class="slider-grp"><label>介质 εᵣ</label><input type="range" id="eSlider" min="1.0" max="8.0" value="1.0" step="0.1"><span class="val" id="eV">1.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 8, 30);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth/window.innerHeight, 0.5, 25);
+camera.position.set(5.5, 3.0, 6.5);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 2.5; controls.maxDistance = 15;
+controls.maxPolarAngle = Math.PI * 0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060, 1.8));
+const key = new THREE.DirectionalLight(0xffffff, 4.5);
+key.position.set(8, 10, 5); key.castShadow = true;
+key.shadow.mapSize.set(2048, 2048);
+key.shadow.camera.near = 0.2; key.shadow.camera.far = 30;
+key.shadow.camera.left = -10; key.shadow.camera.right = 10;
+key.shadow.camera.top = 10; key.shadow.camera.bottom = -10;
+key.shadow.bias = -0.00005; key.shadow.normalBias = 0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc, 1.8).position.set(-3, 3, -2));
+scene.add(new THREE.DirectionalLight(0xffffff, 2.0).position.set(0, 2, -5));
+scene.add(new THREE.PointLight(0xffffff, 3, 8).position.set(0, 4, 2));
+
+const root = new THREE.Group(); scene.add(root);
+const grid = new THREE.PolarGridHelper(3.5, 20, 12, 64, 0x30363d, 0x1a1e28);
+grid.position.y = -2.8; root.add(grid);
+
+const plateGrp = new THREE.Group(); root.add(plateGrp);
+const fieldGrp = new THREE.Group(); root.add(fieldGrp);
+const isoGrp = new THREE.Group(); root.add(isoGrp);
+const dielGrp = new THREE.Group(); root.add(dielGrp);
+const partGrp = new THREE.Group(); root.add(partGrp);
+
+const eps0 = 8.85e-12;
+let U = 1.0, d_mm = 2.0, S_cm2 = 25, eps_r = 1.0;
+
+function spriteLabel(text, color, scaleX, scaleY) {
+  const c = document.createElement('canvas'); c.width=256; c.height=64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle=color; ctx.font='bold 28px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(text,128,32);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter=THREE.LinearFilter;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({map:tex,depthTest:false,transparent:true,depthWrite:false}));
+  s.scale.set(scaleX||0.4, scaleY||0.2, 1); return s;
+}
+
+function disposeGroup(grp) {
+  while (grp.children.length > 0) {
+    const ch = grp.children[0];
+    if (ch.geometry) ch.geometry.dispose();
+    if (ch.material) {
+      if (Array.isArray(ch.material)) ch.material.forEach(m => { if (m.map) m.map.dispose(); m.dispose(); });
+      else { if (ch.material.map) ch.material.map.dispose(); ch.material.dispose(); }
+    }
+    grp.remove(ch);
+  }
+}
+
+function rebuild() {
+  const vsGap = d_mm * 0.5;
+  const halfGap = vsGap / 2;
+  const plateSide = Math.sqrt(S_cm2 / 25) * 1.3;
+  const plateThick = 0.06;
+
+  // ── Plates ──
+  disposeGroup(plateGrp);
+  const geom = new THREE.BoxGeometry(plateSide, plateSide, plateThick);
+  const matPos = new THREE.MeshStandardMaterial({color:0xff4444, roughness:0.13, metalness:0.85, emissive:0x330000, emissiveIntensity:0.7});
+  const matNeg = new THREE.MeshStandardMaterial({color:0x4488ff, roughness:0.13, metalness:0.85, emissive:0x000033, emissiveIntensity:0.7});
+  const p1 = new THREE.Mesh(geom, matPos); p1.position.set(0, 0, -halfGap); p1.castShadow = true; plateGrp.add(p1);
+  const p2 = new THREE.Mesh(geom, matNeg); p2.position.set(0, 0, halfGap); p2.castShadow = true; plateGrp.add(p2);
+
+  const glowGeom = new THREE.BoxGeometry(plateSide+0.15, 0.02, plateSide+0.15);
+  const g1 = new THREE.Mesh(glowGeom, new THREE.MeshBasicMaterial({color:0xff6644, transparent:true, opacity:0.2, depthWrite:false}));
+  g1.position.copy(p1.position); plateGrp.add(g1);
+  const g2 = new THREE.Mesh(glowGeom, new THREE.MeshBasicMaterial({color:0x4488ff, transparent:true, opacity:0.2, depthWrite:false}));
+  g2.position.copy(p2.position); plateGrp.add(g2);
+
+  const l1 = spriteLabel('+Q', '#ff6666', 0.35, 0.18); l1.position.set(0, 0.35, -halfGap); plateGrp.add(l1);
+  const l2 = spriteLabel('−Q', '#4488ff', 0.35, 0.18); l2.position.set(0, 0.35, halfGap); plateGrp.add(l2);
+
+  // ── Equipotential planes ──
+  disposeGroup(isoGrp);
+  const nIso = 6;
+  for (let i = 1; i < nIso; i++) {
+    const z = -halfGap + (vsGap * i) / nIso;
+    const t = i / nIso;
+    const col = new THREE.Color().setHSL(0.58 - t * 0.45, 0.55, 0.35 + t * 0.35);
+    const isoPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(plateSide + 0.1, plateSide + 0.1),
+      new THREE.MeshBasicMaterial({color:col, transparent:true, opacity:0.14, depthWrite:false, side:THREE.DoubleSide})
+    );
+    isoPlane.position.set(0, 0, z); isoPlane.renderOrder = -1;
+    isoGrp.add(isoPlane);
+    const wireG = new THREE.EdgesGeometry(new THREE.PlaneGeometry(plateSide + 0.1, plateSide + 0.1));
+    const wire = new THREE.LineSegments(wireG, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0.25}));
+    wire.position.set(0, 0, z); isoGrp.add(wire);
+    const V = (U * t).toFixed(3);
+    const sp = spriteLabel(V+'V', `hsl(${(0.58-t*0.45)*360},55%,${(0.35+t*0.35)*100}%)`, 0.42, 0.18);
+    sp.position.set(plateSide/2 + 0.35, 0, z); isoGrp.add(sp);
+  }
+
+  // ── Field arrows ──
+  disposeGroup(fieldGrp);
+  const nGrid = 6;
+  const spc = plateSide * 0.9 / (nGrid - 1);
+  const arrowGeom = new THREE.ConeGeometry(0.028, 0.1, 5);
+  const arrowMat = new THREE.MeshStandardMaterial({color:0xffaa44, roughness:0.25, metalness:0.05, emissive:0x221100, emissiveIntensity:0.5});
+  for (let r = 0; r < nGrid; r++) {
+    for (let c = 0; c < nGrid; c++) {
+      const x = (c - (nGrid-1)/2) * spc;
+      const y = (r - (nGrid-1)/2) * spc;
+      const nCol = Math.max(2, Math.floor(vsGap / 0.17));
+      for (let a = 0; a < nCol; a++) {
+        const z = -halfGap + 0.1 + (vsGap - 0.2) * (a + 0.5) / nCol;
+        const arr = new THREE.Mesh(arrowGeom, arrowMat);
+        arr.position.set(x, y, z);
+        arr.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0), new THREE.Vector3(0,0,1));
+        fieldGrp.add(arr);
+      }
+    }
+  }
+
+  // ── Dielectric ──
+  disposeGroup(dielGrp);
+  if (eps_r > 1.0) {
+    const dielMat = new THREE.MeshPhysicalMaterial({
+      color:0x4488cc, roughness:0.06, metalness:0.0,
+      transparent:true, opacity:0.3, depthWrite:false,
+      clearcoat:0.3, clearcoatRoughness:0.05
+    });
+    const slab = new THREE.Mesh(new THREE.BoxGeometry(plateSide*0.9, vsGap*0.82, plateSide*0.9), dielMat);
+    slab.renderOrder = -2; dielGrp.add(slab);
+    const lbl = spriteLabel('εᵣ='+eps_r.toFixed(1), '#88ccff', 0.35, 0.18);
+    lbl.position.set(plateSide/2+0.4, 0, 0); dielGrp.add(lbl);
+  }
+
+  updateUI();
+}
+
+// ── Field particles ──
+const MAX_PARTICLES = 200;
+const particles = [];
+const partMat = new THREE.MeshBasicMaterial({color:0xffcc44, transparent:true, opacity:0.7, depthWrite:false});
+const partGeom = new THREE.SphereGeometry(0.02, 4, 4);
+function resetParticles() {
+  while (partGrp.children.length > 0) partGrp.remove(partGrp.children[0]);
+  particles.length = 0;
+  const vsGap = d_mm * 0.5, halfGap = vsGap / 2;
+  const plateSide = Math.sqrt(S_cm2 / 25) * 1.3;
+  for (let i = 0; i < MAX_PARTICLES; i++) {
+    const m = new THREE.Mesh(partGeom, partMat);
+    const x = (Math.random() - 0.5) * plateSide * 0.85;
+    const y = (Math.random() - 0.5) * plateSide * 0.85;
+    const z = -halfGap + 0.08 + Math.random() * (vsGap - 0.16);
+    m.position.set(x, y, z);
+    m.userData = { x, y, z, speed: 0.3 + Math.random() * 0.7 };
+    partGrp.add(m);
+    particles.push(m);
+  }
+}
+
+function updateParticles(dt) {
+  const vsGap = d_mm * 0.5, halfGap = vsGap / 2;
+  for (const p of particles) {
+    p.userData.z += p.userData.speed * dt;
+    if (p.userData.z > halfGap - 0.05) p.userData.z = -halfGap + 0.08;
+    p.position.z = p.userData.z;
+  }
+}
+
+function updateUI() {
+  const S = S_cm2 * 1e-4, d = d_mm * 1e-3;
+  const C = eps_r * eps0 * S / d;
+  const Q = C * U, Efield = U / d, W = 0.5 * C * U * U;
+  document.getElementById('vC').textContent = (C*1e12).toFixed(2) + ' pF';
+  document.getElementById('vQ').textContent = (Q*1e12).toFixed(2) + '×10⁻¹² C';
+  document.getElementById('vE').textContent = Efield >= 1e6 ? (Efield/1e6).toFixed(1)+'×10⁶ V/m' : Efield.toFixed(0)+' V/m';
+  document.getElementById('vW').textContent = (W*1e12).toFixed(2) + '×10⁻¹² J';
+  document.getElementById('uVal').textContent = U.toFixed(1);
+  document.getElementById('dVal').textContent = d_mm.toFixed(1);
+  document.getElementById('sVal').textContent = S_cm2;
+  document.getElementById('eV').textContent = eps_r.toFixed(1);
+}
+
+function fullRebuild() { rebuild(); resetParticles(); }
+
+document.getElementById('uSlider').addEventListener('input', function(){U=parseFloat(this.value);fullRebuild();});
+document.getElementById('dSlider').addEventListener('input', function(){d_mm=parseFloat(this.value);fullRebuild();});
+document.getElementById('sSlider').addEventListener('input', function(){S_cm2=parseInt(this.value);fullRebuild();});
+document.getElementById('eSlider').addEventListener('input', function(){eps_r=parseFloat(this.value);fullRebuild();});
+
+window.addEventListener('keydown', e => {
+  if (e.key.toLowerCase()==='r') { camera.position.set(5.5,3.0,6.5); controls.target.set(0,0,0); controls.update(); }
+});
+window.addEventListener('resize', ()=>{camera.aspect=window.innerWidth/window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock = new THREE.Clock();
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 0.1);
+  controls.update();
+  updateParticles(dt);
+  renderer.render(scene, camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+
+</html>
