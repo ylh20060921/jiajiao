@@ -2670,7 +2670,6 @@ function initScrollGradientBlur(){
 // ========== 云端同步（GitHub API） ==========
 const CLOUD_REPO='ylh20060921/physics-model-sharing';
 const CLOUD_API='https://api.github.com/repos/'+CLOUD_REPO+'/contents/uploads';
-const CLOUD_RAW='https://raw.githubusercontent.com/'+CLOUD_REPO+'/main/uploads/';
 let cloudModels=[];
 let cloudPollTimer=null;
 let cloudKnownSHAs=new Set();
@@ -2708,7 +2707,7 @@ function buildCloudModels(files){
       size:f.size||0,note:'',tags:[],
       title:f.name.replace(/\.(html|htm)$/i,''),thumb:'',fav:false,
       cloud:true,sha:f.sha,
-      downloadUrl:CLOUD_RAW+encodeURIComponent(f.name),
+      downloadUrl:f.download_url,
       createdAt:f.name.match(/(\d{8,})/)?new Date(parseInt(f.name.match(/(\d{8,})/)[1].substring(0,13))).getTime():Date.now()
     };
   });
