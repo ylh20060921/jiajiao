@@ -1291,9 +1291,7 @@ function renderViewer(model){
   const sx=rect?Math.max(.05,rect.w/vw):1;
   const sy=rect?Math.max(.05,rect.h/vh):1;
   return `
-    <header class="topbar" style="z-index:200">  <!-- z-index高于viewer-enter(100)：全屏预览放大后返回按钮不被盖住 -->
-      <div class="logo"><div class="logo-icon">${IC_LOGO}</div><span>3D 模型库</span></div>
-      <div class="topbar-spacer"></div>
+    <header class="topbar" style="z-index:200;justify-content:flex-end">  <!-- z-index高于viewer-enter(100)：全屏预览放大后返回按钮不被盖住；viewer模式不展示主页logo -->
       <button class="topbar-btn btn-ghost" onclick="goList()">‹ 返回列表</button>
     </header>
     <div class="viewer-page viewer-enter" style="--ox:${ox};--oy:${oy};--sx:${sx};--sy:${sy}">
