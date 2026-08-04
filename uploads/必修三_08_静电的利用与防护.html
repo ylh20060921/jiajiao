@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>静电的利用与防护 — 3D交互模型</title>
+<style>
+:root{--bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;--text-dim:#8b949e;--accent-blue:#58a6ff;--accent-gold:#d2991d;--accent-red:#f85149;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);--slider-track:#30363d;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+#top-panel{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:10px 22px;display:flex;gap:16px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.item{text-align:center}.item .lbl{font-size:10px;color:var(--text-dim)}.item .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.val.blue{color:var(--accent-blue)}.val.gold{color:var(--accent-gold)}.val.red{color:var(--accent-red)}.val.green{color:var(--accent-green)}
+#controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:12px 20px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+button{background:var(--slider-track);border:none;color:var(--text-dim);font-size:11px;font-weight:700;padding:8px 14px;border-radius:8px;cursor:pointer;transition:all 0.2s}
+button.active{background:linear-gradient(135deg,var(--accent-gold),#e6a817);color:#0d1117;box-shadow:0 0 12px rgba(210,153,29,0.3)}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{-webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;background:var(--slider-track)}
+.slider-grp input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">模式</div><div class="val gold" id="vMode">静电除尘</div></div>
+  <div class="item"><div class="lbl">高压 U</div><div class="val red" id="vU">50 kV</div></div>
+  <div class="item"><div class="lbl">收集效率</div><div class="val green" id="vEff">87%</div></div>
+  <div class="item"><div class="lbl">颗粒数</div><div class="val blue" id="vCount">25</div></div>
+</div>
+<div id="controls">
+  <button data-mode="esp" class="active">静电除尘</button>
+  <button data-mode="point">尖端放电</button>
+  <div class="slider-grp"><label>电压 (kV)</label><input type="range" id="uSlider" min="10" max="100" value="50"><span class="val" id="uVal">50</span></div>
+  <button id="animBtn" class="active">动画</button>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);scene.fog=new THREE.Fog(0x0d1117,8,30);
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(4,3,6);camera.lookAt(0,-0.2,0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,-0.2,0);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=2.5;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*0.78;controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);key.position.set(6,8,4);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=0.2;key.shadow.camera.far=20;
+key.shadow.camera.left=-6;key.shadow.camera.right=6;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-0.00005;scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-4,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-5));
+scene.add(new THREE.PointLight(0xffffff,2.5,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,16,10,48,0x30363d,0x1a1e28);grid.position.y=-2;root.add(grid);
+const sceneGrp=new THREE.Group();root.add(sceneGrp);
+const particleGrp=new THREE.Group();root.add(particleGrp);
+const labelGrp=new THREE.Group();root.add(labelGrp);
+
+let mode='esp', U=50, animOn=true, t=0;
+const particles=[];
+
+function disposeGroup(grp){while(grp.children.length>0){const ch=grp.children[0];if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}}grp.remove(ch);}}
+
+function addCanvasText(grp,x,y,z,text,color,scaleW,scaleH){
+  const c=document.createElement('canvas');c.width=256;c.height=48;
+  const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.font='bold 22px Inter';ctx.textAlign='center';ctx.fillText(text,128,32);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(scaleW||1.0,scaleH||0.2,1);sp.position.set(x,y,z);grp.add(sp);
+}
+
+function buildESP(){
+  disposeGroup(sceneGrp);
+  const cylG=new THREE.CylinderGeometry(0.7,0.7,2.2,32,1,true);
+  const cylM=new THREE.MeshPhysicalMaterial({color:0x667788,roughness:0.3,metalness:0.8,opacity:0.35,transparent:true,side:THREE.DoubleSide,clearcoat:0.1});
+  const cyl=new THREE.Mesh(cylG,cylM);cyl.position.y=0.1;sceneGrp.add(cyl);
+  const rimT=new THREE.Mesh(new THREE.TorusGeometry(0.72,0.02,8,32),new THREE.MeshStandardMaterial({color:0x8899aa,roughness:0.2,metalness:0.9}));
+  rimT.position.y=1.2;sceneGrp.add(rimT);
+  const rimB=new THREE.Mesh(new THREE.TorusGeometry(0.72,0.02,8,32),new THREE.MeshStandardMaterial({color:0x8899aa,roughness:0.2,metalness:0.9}));
+  rimB.position.y=-1.0;sceneGrp.add(rimB);
+  const wireG=new THREE.CylinderGeometry(0.015,0.015,2.0,8);
+  const wireM=new THREE.MeshStandardMaterial({color:0xcc4444,roughness:0.2,metalness:0.9,emissive:0x440000,emissiveIntensity:0.8});
+  const wire=new THREE.Mesh(wireG,wireM);wire.position.y=0.1;sceneGrp.add(wire);
+  const glowG=new THREE.CylinderGeometry(0.04,0.04,2.0,8);
+  const glowM=new THREE.MeshBasicMaterial({color:0xff4444,opacity:0.2,transparent:true,depthWrite:false});
+  const glow=new THREE.Mesh(glowG,glowM);glow.position.y=0.1;sceneGrp.add(glow);
+  const inlet=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,0.15,8),new THREE.MeshStandardMaterial({color:0x445566,roughness:0.4,metalness:0.6}));
+  inlet.position.y=-1.2;sceneGrp.add(inlet);
+  addCanvasText(labelGrp,0,1.45,0,'静电除尘器 (ESP)','#d2991d',1.4,0.25);
+  addCanvasText(labelGrp,-1.0,-1.3,0,'含尘气体进 →','#8b949e',0.9,0.2);
+  addCanvasText(labelGrp,-0.95,1.5,0,'← 洁净气体出','#8b949e',0.9,0.2);
+}
+
+function buildPointDischarge(){
+  disposeGroup(sceneGrp);
+  const plateG=new THREE.BoxGeometry(2.0,1.8,0.08);
+  const plateM=new THREE.MeshStandardMaterial({color:0x4466aa,roughness:0.2,metalness:0.7,emissive:0x111133,emissiveIntensity:0.4});
+  const plate=new THREE.Mesh(plateG,plateM);plate.position.set(0.8,0,0);plate.castShadow=true;plate.receiveShadow=true;sceneGrp.add(plate);
+  const sharpTip=createConductor(-0.5,0,0.03,0.19,true,0xff6644);
+  const bluntTip=createConductor(-0.5,0.6,0.19,0.03,false,0x66aaff);
+  addCanvasText(labelGrp,-0.5,-0.55,0,'尖端(强放电)','#ff6644',0.8,0.18);
+  addCanvasText(labelGrp,-0.5,1.2,0,'钝端(弱放电)','#66aaff',0.8,0.18);
+  addCanvasText(labelGrp,0.8,1.15,0,'极板 (+)','#8899ff',0.6,0.18);
+}
+
+function createConductor(x,y,tipR,baseR,invert,color){
+  const grp=new THREE.Group();
+  const path=[];const n=16;
+  for(let i=0;i<=n;i++){const t=i/n;const r=tipR+(baseR-tipR)*Math.pow(t,0.6);path.push(new THREE.Vector2(r,-0.4+t*0.8));}
+  const g=new THREE.LatheGeometry(path,24);
+  const cnd=new THREE.Mesh(g,new THREE.MeshStandardMaterial({color,roughness:0.2,metalness:0.85,emissive:color,emissiveIntensity:0.3}));
+  cnd.position.set(x,y,0);cnd.rotation.x=invert?Math.PI:0;cnd.castShadow=true;sceneGrp.add(cnd);
+}
+
+function spawnParticle(){
+  const Ueff=U/100;
+  return {
+    y:-1.0+Math.random()*0.3, x:(Math.random()-0.5)*0.4, z:(Math.random()-0.5)*0.4,
+    vx:0, vy:0.5+Math.random()*0.3, vz:0, alive:true, collected:false,
+    mesh:new THREE.Mesh(new THREE.SphereGeometry(0.025,6,6),new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(Math.random()*0.1,0.2,0.6),transparent:true,opacity:0.9}))
+  };
+}
+
+function updateUI(){
+  document.getElementById('vU').textContent=U+' kV';
+  document.getElementById('uVal').textContent=U;
+  if(mode==='esp'){
+    const eff=Math.min(99,Math.round(55+U*0.44));
+    document.getElementById('vEff').textContent=eff+'%';
+    document.getElementById('vCount').textContent=particles.length;
+    document.getElementById('vEff').parentElement.style.display='';
+    document.getElementById('vCount').parentElement.style.display='';
+  }else{
+    document.getElementById('vEff').parentElement.style.display='none';
+    document.getElementById('vCount').parentElement.style.display='none';
+  }
+}
+
+function fullRebuild(){
+  disposeGroup(labelGrp);
+  if(mode==='esp')buildESP();
+  else buildPointDischarge();
+  updateUI();
+}
+
+document.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('click',function(){
+  document.querySelectorAll('button[data-mode]').forEach(x=>x.classList.remove('active'));this.classList.add('active');
+  mode=this.dataset.mode;disposeGroup(particleGrp);particles.length=0;fullRebuild();
+}));
+document.getElementById('uSlider').addEventListener('input',function(){U=parseInt(this.value);updateUI();});
+document.getElementById('animBtn').addEventListener('click',function(){animOn=!animOn;this.classList.toggle('active',animOn);});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(4,3,6);camera.lookAt(0,-0.2,0);controls.target.set(0,-0.2,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  if(animOn&&mode==='esp'){
+    t+=dt;
+    if(particles.length<25&&t>0.15){t=0;const p=spawnParticle();particleGrp.add(p.mesh);particles.push(p);}
+    for(let i=particles.length-1;i>=0;i--){
+      const p=particles[i];if(!p.alive)continue;
+      const r=Math.sqrt(p.x*p.x+p.z*p.z);
+      if(r<0.4)p.vy+=0.8*dt;
+      const Fr=U>10?U*0.04/(r+0.05):0;
+      p.vx-=Fr*(p.x/(r+0.001))*dt;
+      p.vz-=Fr*(p.z/(r+0.001))*dt;
+      p.x+=p.vx*dt;p.y+=p.vy*dt;p.z+=p.vz*dt;
+      const rNow=Math.sqrt(p.x*p.x+p.z*p.z);
+      if(rNow>0.68&&!p.collected){p.collected=true;p.vx=0;p.vz=0;p.vy=0;p.x*=0.68/rNow;p.z*=0.68/rNow;p.mesh.material.color.set(0x888888);p.mesh.material.opacity=0.5;}
+      if(p.y>1.1||rNow>0.75){p.alive=false;particleGrp.remove(p.mesh);if(p.mesh.geometry)p.mesh.geometry.dispose();p.mesh.material.dispose();particles.splice(i,1);}
+      p.mesh.position.set(p.x,p.y,p.z);
+    }
+    updateUI();
+  }
+  controls.update();renderer.render(scene,camera);
+}
+fullRebuild();requestAnimationFrame(animate);
+</script>
+</html>
