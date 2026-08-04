@@ -2427,7 +2427,13 @@ async function loadModelIntoIframe(id){
     const cm=getCloudModel(id);
     if(!cm)return;
     const frame=document.getElementById('modelFrame');
-    if(frame)frame.src=cm.downloadUrl;
+    if(!frame)return;
+    // fetch 后创建 Blob URL，避免直接使用 downloadUrl 触发浏览器下载
+    try{
+      const resp=await fetch(cm.downloadUrl);
+      const blob=await resp.blob();
+      frame.src=URL.createObjectURL(blob);
+    }catch(e){console.error('云端模型加载失败',e);}
     return;
   }
   const r=await getModelBlob(id);
