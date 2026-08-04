@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>磁现象与磁场 — 3D交互模型</title>
+<style>
+:root{--bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;--text-dim:#8b949e;--accent-blue:#58a6ff;--accent-gold:#d2991d;--accent-red:#f85149;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);--slider-track:#30363d;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+#top-panel{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:10px 20px;display:flex;gap:16px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.item{text-align:center}.item .lbl{font-size:10px;color:var(--text-dim)}.item .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.val.blue{color:var(--accent-blue)}.val.gold{color:var(--accent-gold)}.val.red{color:var(--accent-red)}.val.green{color:var(--accent-green)}
+#controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+button{background:var(--slider-track);border:none;color:var(--text-dim);font-size:10px;font-weight:700;padding:8px 12px;border-radius:7px;cursor:pointer;transition:all 0.2s}
+button.active{background:linear-gradient(135deg,var(--accent-gold),#e6a817);color:#0d1117;box-shadow:0 0 10px rgba(210,153,29,0.3)}
+#hint{position:fixed;bottom:100px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">磁体A(N)</div><div class="val red" id="vAN">N极</div></div>
+  <div class="item"><div class="lbl">磁体B</div><div class="val blue" id="vBS">S极</div></div>
+  <div class="item"><div class="lbl">相互作用</div><div class="val gold" id="vInter">吸引</div></div>
+  <div class="item"><div class="lbl">磁场强度</div><div class="val green" id="vB">0.5 T</div></div>
+</div>
+<div id="controls">
+  <button data-mode="single" class="active">单磁铁磁场</button>
+  <button data-mode="attract">异名相吸</button>
+  <button data-mode="repel">同名相斥</button>
+  <button data-mode="earth">地磁场</button>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);scene.fog=new THREE.Fog(0x0d1117,8,30);
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(3,2,7);camera.lookAt(0,0,0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=2;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*0.75;controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);key.position.set(6,8,4);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=0.2;key.shadow.camera.far=20;
+key.shadow.camera.left=-6;key.shadow.camera.right=6;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-0.00005;scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-4,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-6));
+scene.add(new THREE.PointLight(0xffffff,2.5,10).position.set(0,5,3));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,16,10,48,0x30363d,0x1a1e28);grid.position.y=-2;root.add(grid);
+const mainGrp=new THREE.Group();root.add(mainGrp);
+const fieldGrp=new THREE.Group();root.add(fieldGrp);
+const annotGrp=new THREE.Group();root.add(annotGrp);
+
+let mode='single',t=0,posB=2.5,velB=0;
+
+function disposeGroup(grp){while(grp.children.length>0){const ch=grp.children[0];if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}}grp.remove(ch);}}
+
+function addText(text,x,y,z,w,h,color){
+  const c=document.createElement('canvas');c.width=256;c.height=40;
+  const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.font='bold 20px Inter';ctx.textAlign='center';ctx.fillText(text,128,28);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(w,h,1);sp.position.set(x,y,z);return sp;
+}
+
+function makeMagnet(x,y,z,rx,ry,rz,labelN,labelS){
+  const body=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,0.8),new THREE.MeshStandardMaterial({color:0x888888,roughness:0.3,metalness:0.6}));
+  body.position.set(x,y,z);body.rotation.set(rx,ry,rz);mainGrp.add(body);
+  const redHalf=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.41),new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.2,metalness:0.4,emissive:0x440000,emissiveIntensity:0.3}));
+  redHalf.position.set(x,y,z+0.2);redHalf.rotation.set(rx,ry,rz);mainGrp.add(redHalf);
+  const blueHalf=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.41),new THREE.MeshStandardMaterial({color:0x4466ff,roughness:0.2,metalness:0.4,emissive:0x000044,emissiveIntensity:0.3}));
+  blueHalf.position.set(x,y,z-0.2);blueHalf.rotation.set(rx,ry,rz);mainGrp.add(blueHalf);
+  annotGrp.add(addText(labelN,x,y+0.3,z+0.25,0.2,0.12,'#ff6666'));
+  annotGrp.add(addText(labelS,x,y+0.3,z-0.25,0.2,0.12,'#6688ff'));
+}
+
+function dipoleField(px,py,pz,polarity){
+  const N=120,dz=polarity;
+  for(let i=0;i<N;i++){
+    const phi=Math.random()*Math.PI*2;const theta=(Math.random()-0.5)*Math.PI*0.9;
+    const r0=0.5;const dr=2.5;const r=r0+Math.random()*dr;
+    const curvePts=[];const steps=40;const stepSize=dr/steps;
+    let cx=px+r*Math.sin(theta)*Math.cos(phi),cy=py+r*Math.sin(theta)*Math.sin(phi),cz=pz+r*Math.cos(theta);
+    for(let j=0;j<steps;j++){
+      curvePts.push(new THREE.Vector3(cx,cy,cz));
+      const dx=cx-px,dy=cy-py,dz2=cz-pz;const d=Math.sqrt(dx*dx+dy*dy+dz2*dz2)+0.02;
+      const Bx=3*(dx*dz2)/(d*d*d*d*d*0.02+1)*dz;
+      const By=3*(dy*dz2)/(d*d*d*d*d*0.02+1)*dz;
+      const Bz=3*(dz2*dz2-0.33*d*d)/(d*d*d*d*d*0.02+1)*dz;
+      cx+=Bx*stepSize*0.3;cy+=By*stepSize*0.3;cz+=Bz*stepSize*0.3;
+      if(d>4||d<0.2)break;
+    }
+    if(curvePts.length>2){
+      const g=new THREE.BufferGeometry().setFromPoints(curvePts);
+      const line=new THREE.Line(g,new THREE.LineBasicMaterial({color:0x6688ff,transparent:true,opacity:0.15}));
+      fieldGrp.add(line);
+    }
+  }
+}
+
+function buildSingle(){
+  makeMagnet(0,0,0,0,0,0,'N','S');
+  dipoleField(0,0,0.4,1);dipoleField(0,0,-0.4,-1);
+  annotGrp.add(addText('磁感线 N→S',0,0.8,0,0.6,0.14,'#58a6ff'));
+}
+
+function buildAttract(){
+  makeMagnet(-1.2,0,0,0,0,0,'N','S');
+  makeMagnet(1.2,0,0,0,0,0,'N','S');
+  posB=1.2;
+}
+
+function buildRepel(){
+  makeMagnet(-1.2,0,0,0,0,0,'N','S');
+  const g=new THREE.Group();const body=new THREE.Mesh(new THREE.BoxGeometry(0.25,0.25,0.8),new THREE.MeshStandardMaterial({color:0x888888,roughness:0.3,metalness:0.6}));
+  body.position.set(0,0,0);g.add(body);
+  const rh=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.41),new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.2,metalness:0.4,emissive:0x440000,emissiveIntensity:0.3}));
+  rh.position.set(0,0,-0.2);g.add(rh);
+  const bh=new THREE.Mesh(new THREE.BoxGeometry(0.26,0.26,0.41),new THREE.MeshStandardMaterial({color:0x4466ff,roughness:0.2,metalness:0.4,emissive:0x000044,emissiveIntensity:0.3}));
+  bh.position.set(0,0,0.2);g.add(bh);
+  g.position.set(1.2,0,0);mainGrp.add(g);
+  posB=1.2;
+}
+
+function buildEarth(){
+  const earthTex=new THREE.CanvasTexture(function(){
+    const c=document.createElement('canvas');c.width=256;c.height=128;
+    const ctx=c.getContext('2d');ctx.fillStyle='#224488';ctx.fillRect(0,0,256,128);
+    ctx.fillStyle='#44aa44';ctx.fillRect(20,30,60,40);ctx.fillRect(130,20,50,35);
+    return c;
+  }());
+  const earth=new THREE.Mesh(new THREE.SphereGeometry(1.2,48,48),new THREE.MeshStandardMaterial({map:earthTex,roughness:0.4,metalness:0.1}));
+  earth.position.set(0,0,0);mainGrp.add(earth);
+  const axis=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,2.6,8),new THREE.MeshStandardMaterial({color:0xffffff,roughness:0.2}));
+  axis.position.set(0,0,0);axis.rotation.z=0.2;mainGrp.add(axis);
+  const dipoleLine=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,2.4,8),new THREE.MeshBasicMaterial({color:0xffaa00}));
+  dipoleLine.position.set(0,0,0);dipoleLine.rotation.z=0.2;mainGrp.add(dipoleLine);
+  annotGrp.add(addText('地磁场: 磁轴偏角11.5°',0,1.6,0,0.9,0.16,'#d2991d'));
+  for(let i=0;i<8;i++){
+    const a=i*Math.PI/4;const r=1.3;
+    const g=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(r*Math.cos(a)*0.5,-1.5,r*Math.sin(a)*0.5),
+      new THREE.Vector3(r*Math.cos(a),-0.5,r*Math.sin(a)),
+      new THREE.Vector3(r*Math.cos(a)*0.3,0.8,r*Math.sin(a)*0.3),
+      new THREE.Vector3(-r*Math.cos(a)*0.3,1.5,-r*Math.sin(a)*0.3)
+    ]);
+    const line=new THREE.Line(g,new THREE.LineBasicMaterial({color:0x6688ff,transparent:true,opacity:0.2}));
+    fieldGrp.add(line);
+  }
+}
+
+function switchMode(m){
+  mode=m;t=0;disposeGroup(mainGrp);disposeGroup(fieldGrp);disposeGroup(annotGrp);
+  if(m==='single'){buildSingle();}
+  else if(m==='attract'){buildAttract();posB=1.2;velB=0;}
+  else if(m==='repel'){buildRepel();posB=1.2;velB=0;}
+  else{buildEarth();}
+  document.getElementById('vInter').textContent={single:'N→S',attract:'吸引 ⬅➡',repel:'排斥 ➡⬅',earth:'地磁S→N'}[m];
+  document.getElementById('vB').textContent={single:'0.5 T',attract:'递增中',repel:'递减中',earth:'~50 μT'}[m];
+  document.querySelectorAll('button[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));
+}
+
+document.querySelectorAll('button[data-mode]').forEach(b=>b.addEventListener('click',function(){switchMode(this.dataset.mode);}));
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(3,2,7);camera.lookAt(0,0,0);controls.target.set(0,0,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);t+=dt;
+  if(mode==='attract'||mode==='repel'){
+    const d=posB-1.2;const dir=mode==='attract'?-1:1;
+    const F=dir*1.5/(d*d+0.05);velB+=F*dt;velB*=0.95;posB+=velB*dt;
+    posB=Math.max(0.6,Math.min(3.5,posB));
+    mainGrp.children.forEach(c=>{if(Math.abs(c.position.x-posB)<0.5&&c.position.x!==-1.2){c.position.x=posB;}});
+    const Bval=1.5/((posB-1.2)*(posB-1.2)+0.1);
+    document.getElementById('vB').textContent=Bval.toFixed(2)+' T';
+  }
+  controls.update();renderer.render(scene,camera);
+}
+switchMode('single');requestAnimationFrame(animate);
+</script>
+</html>
