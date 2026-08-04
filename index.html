@@ -2163,7 +2163,11 @@ function b64Copy(){
 // ---------- 主渲染 ----------
 async function render(){
   const app=document.getElementById('app');
-  app.innerHTML=renderSidebar()+'<main id="main"></main>';
+  if(state.view==='viewer'){
+    app.innerHTML='<main id="main"></main>';
+  } else {
+    app.innerHTML=renderSidebar()+'<main id="main"></main>';
+  }
   const main=app.querySelector('#main');
   try{
     if(state.app==='notes'){await renderNotes(main);return;}
