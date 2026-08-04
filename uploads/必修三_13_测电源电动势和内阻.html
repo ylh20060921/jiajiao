@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>测电源电动势和内阻 — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--accent-green:#3fb950;--accent-purple:#bc8cff;
+  --border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 20px;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10px;color:var(--text-dim);letter-spacing:0.3px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.green{color:var(--accent-green)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.purple{color:var(--accent-purple)}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+button{
+  background:linear-gradient(135deg,var(--accent-gold),#e6a817);border:none;color:#0d1117;
+  font-size:11px;font-weight:700;padding:8px 16px;border-radius:8px;cursor:pointer;
+  transition:transform 0.15s,box-shadow 0.15s;box-shadow:0 0 12px rgba(210,153,29,0.3);
+}
+button:hover{transform:translateY(-1px);box-shadow:0 0 20px rgba(210,153,29,0.5)}
+button:active{transform:translateY(0)}
+button.clear{background:var(--slider-track);color:var(--text-dim);box-shadow:none}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+@media(max-width:900px){#top-panel{gap:8px;padding:8px 10px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">E测</div><div class="val gold" id="vEfit">— V</div></div>
+  <div class="item"><div class="lbl">r测</div><div class="val red" id="vRfit">— Ω</div></div>
+  <div class="item"><div class="lbl">数据点</div><div class="val blue" id="vNpts">0</div></div>
+  <div class="item"><div class="lbl">当前 R</div><div class="val green" id="vRcur">10.0 Ω</div></div>
+  <div class="item"><div class="lbl">当前 U</div><div class="val gold" id="vUcur">— V</div></div>
+  <div class="item"><div class="lbl">当前 I</div><div class="val purple" id="vIcur">— A</div></div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>变阻器 R (Ω)</label><input type="range" id="rSlider" min="1" max="30" value="10" step="0.1"><span class="val" id="rVal">10.0</span></div>
+  <button id="recordBtn">记录数据点</button>
+  <button id="clearBtn" class="clear">清空</button>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.Fog(0x0d1117,8,30);
+
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,25);
+camera.position.set(2,3,7);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,-0.2,0);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=18;
+controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);
+key.position.set(8,10,5);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=0.2;key.shadow.camera.far=30;
+key.shadow.camera.left=-8;key.shadow.camera.right=8;
+key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
+key.shadow.bias=-0.00005;key.shadow.normalBias=0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-3,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-4));
+scene.add(new THREE.PointLight(0xffffff,3,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,20,12,64,0x30363d,0x1a1e28);
+grid.position.y=-1.8;root.add(grid);
+
+const circuitGrp=new THREE.Group();root.add(circuitGrp);
+const graphGrp=new THREE.Group();root.add(graphGrp);
+const labelGrp=new THREE.Group();root.add(labelGrp);
+
+const E_true=6, r_true=1.2;
+let R=10;
+const dataPoints=[];
+const nParticles=40;
+const pGeom=new THREE.SphereGeometry(0.035,5,5);
+const pMat=new THREE.MeshStandardMaterial({color:0x44ddff,roughness:0.1,metalness:0.3,emissive:0x003344,emissiveIntensity:1.8});
+const particles=[];
+
+function disposeGroup(grp){
+  while(grp.children.length>0){
+    const ch=grp.children[0];
+    if(ch.geometry)ch.geometry.dispose();
+    if(ch.material){
+      if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+      else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}
+    }
+    grp.remove(ch);
+  }
+}
+
+function buildCircuit(){
+  disposeGroup(circuitGrp);
+  const mat=new THREE.MeshStandardMaterial({color:0xcca866,roughness:0.3,metalness:0.9});
+  const r=0.04;
+  const makeWire=(x1,y1,z1,x2,y2,z2)=>{
+    const dx=x2-x1,dy=y2-y1,dz=z2-z1;
+    const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const geom=new THREE.CylinderGeometry(r,r,len,8);
+    const mesh=new THREE.Mesh(geom,mat);mesh.castShadow=true;
+    mesh.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),new THREE.Vector3(dx,dy,dz).normalize());
+    return mesh;
+  };
+  const battGeom=new THREE.CylinderGeometry(0.2,0.2,1.2,16);
+  const batt=new THREE.Mesh(battGeom,new THREE.MeshStandardMaterial({color:0x556688,roughness:0.3,metalness:0.6}));
+  batt.position.set(-1.5,0.6,0);batt.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2);batt.castShadow=true;
+  circuitGrp.add(batt);
+  const vrGeom=new THREE.CylinderGeometry(0.25,0.25,1.0,16);
+  const vr=new THREE.Mesh(vrGeom,new THREE.MeshStandardMaterial({color:0xaa8855,roughness:0.5,metalness:0.1}));
+  vr.position.set(1.5,0.6,0);vr.quaternion.copy(batt.quaternion);vr.castShadow=true;
+  circuitGrp.add(vr);
+  const vGeom=new THREE.BoxGeometry(0.4,0.5,0.25);
+  const vm=new THREE.Mesh(vGeom,new THREE.MeshStandardMaterial({color:0x333344,roughness:0.3,metalness:0.5}));
+  vm.position.set(0,0.8,0.6);circuitGrp.add(vm);
+  const aGeom=new THREE.BoxGeometry(0.4,0.5,0.25);
+  const am=new THREE.Mesh(aGeom,new THREE.MeshStandardMaterial({color:0x333344,roughness:0.3,metalness:0.5}));
+  am.position.set(0.9,-0.7,0.6);circuitGrp.add(am);
+  circuitGrp.add(makeWire(-1.5,0,0, -1.5,-0.5,0));
+  circuitGrp.add(makeWire(-1.5,-0.5,0, 1.5,-0.5,0));
+  circuitGrp.add(makeWire(1.5,-0.5,0, 1.5,0,0));
+  circuitGrp.add(makeWire(-1.5,1.2,0, -1.5,1.5,0.6));
+  circuitGrp.add(makeWire(-1.5,1.5,0.6, 0,1.5,0.6));
+  circuitGrp.add(makeWire(0,1.5,0.6, 0,0.8,0.6));
+  circuitGrp.add(makeWire(0,0.8,0.6, 1.5,0.8,0.6));
+  circuitGrp.add(makeWire(1.5,0.8,0.6, 1.5,-0.7,0.6));
+  circuitGrp.add(makeWire(1.5,-0.7,0.6, 0.9,-0.7,0.6));
+  circuitGrp.add(makeWire(0.9,-0.7,0.6, -1.5,-0.7,0.6));
+}
+
+function buildLabels(){
+  disposeGroup(labelGrp);
+  const makeLabel=(text,x,y,color,w=0.7)=>{
+    const canvas=document.createElement('canvas');canvas.width=128;canvas.height=36;
+    const ctx=canvas.getContext('2d');ctx.fillStyle=color;ctx.font='bold 16px Inter,Microsoft YaHei';ctx.textAlign='center';ctx.fillText(text,64,26);
+    const tex=new THREE.CanvasTexture(canvas);tex.minFilter=THREE.LinearFilter;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.scale.set(w,0.22,1);sp.position.set(x,y,0.3);return sp;
+  };
+  labelGrp.add(makeLabel('E, r',-1.5,0.05,'#ffcc88'));
+  labelGrp.add(makeLabel('R',1.5,0.05,'#ffcc88'));
+  labelGrp.add(makeLabel('V',0,1.1,0.6,'#44ff66',0.4));
+  labelGrp.add(makeLabel('A',0.9,-0.9,0.6,'#ff8844',0.4));
+}
+
+function buildGraphAxes(){
+  disposeGroup(graphGrp);
+  const axMat=new THREE.MeshBasicMaterial({color:0x8899aa});
+  const yAxis=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,4,8),axMat);
+  yAxis.position.set(-3.5,0.2,3);graphGrp.add(yAxis);
+  const xAxis=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,4,8),axMat);
+  xAxis.position.set(-1.5,-1.8,3);xAxis.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2);graphGrp.add(xAxis);
+  const makeTick=(x,y,sz)=>{
+    const tick=new THREE.Mesh(new THREE.BoxGeometry(sz,0.03,0.03),new THREE.MeshBasicMaterial({color:0x667788}));
+    tick.position.set(x,y,3);return tick;
+  };
+  for(let i=1;i<=6;i++){graphGrp.add(makeTick(-3.5,-1.8+i*0.6,0.4));}
+  for(let i=0;i<=6;i++){graphGrp.add(makeTick(-3.5+i*0.6,-1.85,0.03));}
+}
+
+function drawGraph(){
+  const fitGrp=new THREE.Group();
+  const existing=graphGrp.children.filter(c=>c.userData&&c.userData.isFit);
+  existing.forEach(c=>{if(c.geometry)c.geometry.dispose();if(c.material)c.material.dispose();graphGrp.remove(c);});
+  if(dataPoints.length>=2){
+    let sumX=0,sumY=0,sumXY=0,sumX2=0,n=dataPoints.length;
+    for(const pt of dataPoints){sumX+=pt.I;sumY+=pt.U;sumXY+=pt.I*pt.U;sumX2+=pt.I*pt.I;}
+    const slope=(n*sumXY-sumX*sumY)/(n*sumX2-sumX*sumX);
+    const intercept=(sumY-slope*sumX)/n;
+    const rFit=Math.abs(slope);
+    const EFit=intercept;
+    document.getElementById('vEfit').textContent=EFit.toFixed(2)+' V';
+    document.getElementById('vRfit').textContent=rFit.toFixed(2)+' Ω';
+    const xMin=0,xMax=6;
+    const y0=intercept+slope*xMin;
+    const y1=intercept+slope*xMax;
+    const geom=new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(-3.5+xMin*0.6,-1.8+y0*0.1,3),
+      new THREE.Vector3(-3.5+xMax*0.6,-1.8+y1*0.1,3)
+    ]);
+    const line=new THREE.Line(geom,new THREE.LineBasicMaterial({color:0xffcc44}));
+    line.userData={isFit:true};graphGrp.add(line);
+  }
+  for(const pt of dataPoints){
+    const dotGeom=new THREE.SphereGeometry(0.06,6,6);
+    const dot=new THREE.Mesh(dotGeom,new THREE.MeshBasicMaterial({color:0x44ddff}));
+    dot.position.set(-3.5+pt.I*0.6,-1.8+pt.U*0.1,3);
+    dot.userData={isFit:true};graphGrp.add(dot);
+  }
+}
+
+function getParticlePos(arc){
+  const totalLen=10.4;
+  const segLen=[0.6,3.6,0.6,0.7,2.6,0.5,1.3,0.5];
+  let d=((arc/(Math.PI*2))%1)*totalLen;
+  function seg(i){return segLen.slice(0,i).reduce((a,b)=>a+b,0);}
+  if(d<seg(1)){const t=d/segLen[0];return{x:1.5,y:-0.5+t*1.3};}
+  if(d<seg(2)){const t=(d-seg(1))/segLen[1];return{x:1.5-t*3.0,y:0.8};}
+  if(d<seg(3)){const t=(d-seg(2))/segLen[2];return{x:-1.5,y:0.8-t*0.8};}
+  if(d<seg(4)){const t=(d-seg(3))/segLen[3];return{x:-1.5,y:0-t*0.7};}
+  if(d<seg(5)){const t=(d-seg(4))/segLen[4];return{x:-1.5+t*3.0,y:-0.7};}
+  if(d<seg(6)){const t=(d-seg(5))/segLen[5];return{x:1.5,y:-0.7+t*0.5};}
+  {const t=(d-seg(6))/segLen[6];return{x:1.5,y:-0.2+t*0.2};}
+}
+
+function spawnParticles(){
+  disposeGroup(particleGrp);particles.length=0;
+  for(let i=0;i<nParticles;i++){
+    const mesh=new THREE.Mesh(pGeom,pMat);
+    mesh.userData={arc:Math.random()*Math.PI*2,speed:0.5+Math.random()*0.5};
+    particleGrp.add(mesh);particles.push(mesh);
+  }
+}
+
+let particleGrp=new THREE.Group();root.add(particleGrp);
+
+function updateParticles(dt){
+  const Icur=E_true/Math.max(R+r_true,0.01);
+  const speed=Icur*4;
+  for(const p of particles){
+    p.userData.arc+=dt*0.5*speed*p.userData.speed;
+    const pos=getParticlePos(p.userData.arc);
+    p.position.set(pos.x,pos.y,0);
+  }
+}
+
+function updateUI(){
+  const I=E_true/Math.max(R+r_true,0.01);
+  const U=E_true-I*r_true;
+  document.getElementById('vRcur').textContent=R.toFixed(1)+' Ω';
+  document.getElementById('vUcur').textContent=U.toFixed(2)+' V';
+  document.getElementById('vIcur').textContent=I.toFixed(2)+' A';
+  document.getElementById('vNpts').textContent=dataPoints.length;
+  document.getElementById('rVal').textContent=R.toFixed(1);
+}
+
+function fullRebuild(){
+  buildCircuit();
+  buildLabels();
+  buildGraphAxes();
+  disposeGroup(particleGrp);particleGrp=new THREE.Group();root.add(particleGrp);
+  spawnParticles();
+  drawGraph();
+  updateUI();
+}
+
+document.getElementById('rSlider').addEventListener('input',function(){R=parseFloat(this.value);});
+
+document.getElementById('recordBtn').addEventListener('click',function(){
+  const I=E_true/Math.max(R+r_true,0.01);
+  const U=E_true-I*r_true;
+  dataPoints.push({I,U});
+  drawGraph();
+  updateUI();
+});
+
+document.getElementById('clearBtn').addEventListener('click',function(){
+  dataPoints.length=0;
+  document.getElementById('vEfit').textContent='— V';
+  document.getElementById('vRfit').textContent='— Ω';
+  drawGraph();
+  updateUI();
+});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(2,3,7);controls.target.set(0,-0.2,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  controls.update();
+  updateParticles(dt);
+  updateUI();
+  renderer.render(scene,camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+</html>
