@@ -118,6 +118,13 @@
   }
   .btn-ghost:hover{background:var(--card-hover);border-color:var(--border-strong);transform:translateY(-1px)}
   .btn-ghost:active{transform:translateY(0)}
+  .btn-cache{
+    background:linear-gradient(135deg,rgba(0,188,212,.12),rgba(0,230,118,.06));
+    color:var(--accent-2);border:1px solid rgba(0,188,212,.3);
+    backdrop-filter:blur(10px);
+  }
+  .btn-cache:hover{background:linear-gradient(135deg,rgba(0,188,212,.22),rgba(0,230,118,.12));border-color:rgba(0,188,212,.55);transform:translateY(-1px)}
+  .btn-cache:active{transform:translateY(0)}
   .btn-danger{
     background:linear-gradient(135deg,rgba(232,64,58,.15),rgba(232,64,58,.05));
     color:var(--danger);border:1px solid rgba(232,64,58,.3);
@@ -402,8 +409,8 @@
     box-shadow:0 0 0 3px rgba(0,230,118,.12);background:rgba(255,255,255,.06);
   }
   .side-actions{margin-top:auto;display:flex;gap:8px;flex-wrap:wrap}
-  .viewer-main{flex:1;background:#000;position:relative;min-width:0;display:flex}
-  .viewer-main iframe{width:100%;height:100%;border:none;display:block;flex:1}
+  .viewer-main{flex:1;background:#000;position:relative;min-width:0;min-height:0;display:flex;overflow:hidden;padding:0;margin:0}
+  .viewer-main iframe{width:100%;height:100%;border:none;margin:0;padding:0;display:block;overflow:hidden}
 
   /* ===== Toast ===== */
   .toast{
@@ -1187,7 +1194,7 @@ function renderList(models,tags,total,totalPages,all){
       ${selectBarHtml}
       ${!inSelect?`<button class="topbar-btn btn-ghost" onclick="enterSelectMode()">批量删除</button>`:''}
       <button class="topbar-btn btn-accent" onclick="goUpload()">${IC_UPLOAD} 上传</button>
-
+${(()=>{const uncached=all.filter(m=>m.cloud&&!hasLocalCopy(m.id));return uncached.length>0?`<button class="topbar-btn btn-cache" onclick="cacheAllCloud()" title="缓存所有云端文件到本地">⬇ 缓存全部(`+uncached.length+`个)</button>`:'';})()}
     </header>
     <div class="content">
       <div class="content-header">
@@ -2734,6 +2741,23 @@ async function downloadCloudToLocal(cm){
   });
   setCloudToLocalEntry(cm.id,localId);
   return localId;
+}
+
+// Batch cache all uncached cloud models
+async function cacheAllCloud(){
+  const uncached=cloudModels.filter(function(m){return !hasLocalCopy(m.id);});
+  if(uncached.length===0){toast('所有云端文件已缓存','ok');return;}
+  let done=0;const total=uncached.length;
+  toast('正在缓存 0/'+total+'...','');
+  for(const cm of uncached){
+    try{
+      await downloadCloudToLocal(cm);
+      done++;
+      toast('正在缓存 '+done+'/'+total+'...','');
+    }catch(e){console.error('缓存失败',cm.filename,e);toast('缓存 '+cm.filename+' 失败: '+e.message,'err');}
+  }
+  toast('缓存完成！成功 '+done+'/'+total,'ok');
+  render();
 }
 
 
