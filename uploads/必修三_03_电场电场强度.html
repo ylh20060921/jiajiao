@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电场线与电场强度 — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--accent-green:#3fb950;--accent-purple:#a371f7;
+  --border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}
+canvas{display:block}
+
+/* Top panel */
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:28px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10.5px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono','Cascadia Code',monospace;font-size:15px;font-weight:700;margin-top:2px}
+#top-panel .item .val.blue{color:var(--accent-blue);text-shadow:0 0 10px rgba(88,166,255,0.35)}
+#top-panel .item .val.red{color:var(--accent-red);text-shadow:0 0 10px rgba(248,81,73,0.35)}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .formula{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text-dim);margin-top:1px}
+
+/* Legend */
+#legend{
+  position:fixed;top:120px;right:20px;z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(16px);
+  border:1px solid var(--border);border-radius:10px;padding:10px 14px;
+  font-size:11px;display:flex;flex-direction:column;gap:5px;
+  box-shadow:0 4px 16px rgba(0,0,0,0.35);
+}
+#legend .row{display:flex;align-items:center;gap:8px}
+#legend .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+
+/* Bottom controls */
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:12px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.mode-btn{
+  padding:8px 14px;border:1px solid var(--border);border-radius:8px;
+  background:rgba(22,27,34,0.8);color:var(--text);font-size:12px;font-weight:600;
+  cursor:pointer;transition:all 0.22s;letter-spacing:0.3px;
+  position:relative;
+}
+.mode-btn:hover{background:rgba(88,166,255,0.12);border-color:var(--accent-blue);box-shadow:0 0 12px rgba(88,166,255,0.2)}
+.mode-btn.active{background:rgba(88,166,255,0.18);border-color:var(--accent-blue);color:var(--accent-blue);box-shadow:0 0 14px rgba(88,166,255,0.3)}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:70px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim);letter-spacing:0.4px}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-blue);border:2px solid #fff;box-shadow:0 0 12px rgba(88,166,255,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5;letter-spacing:0.3px}
+
+@media(max-width:900px){
+  #top-panel{gap:14px;padding:8px 14px}
+  #top-panel .item .val{font-size:13px}
+  #top-panel .item .formula{font-size:9px}
+  #controls{gap:8px;padding:8px 12px}
+  .mode-btn{font-size:10px;padding:6px 10px}
+  #legend{right:6px;top:100px;font-size:10px}
+}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">模式</div><div class="val blue" id="vMode">正点电荷</div></div>
+  <div class="item"><div class="lbl">电荷量 Q</div><div class="val blue" id="vQ">1.00</div><div class="formula">k = 9×10⁹ N·m²/C²</div></div>
+  <div class="item"><div class="lbl">r=1 处场强</div><div class="val gold" id="vE">9.00×10⁹ N/C</div><div class="formula">E = kQ / r²</div></div>
+  <div class="item" id="itemDist" style="display:none"><div class="lbl">电荷间距 d</div><div class="val gold" id="vD">2.00</div></div>
+</div>
+<div id="legend">
+  <div class="row"><span class="dot" style="background:#ff4444"></span>+Q 正电荷</div>
+  <div class="row"><span class="dot" style="background:#4488ff"></span>-Q 负电荷</div>
+  <div class="row"><span class="dot" style="background:#ffaa44;box-shadow:0 0 6px #ffaa44"></span>电场线（强→弱）</div>
+</div>
+<div id="controls">
+  <button class="mode-btn active" data-mode="positive">正点电荷</button>
+  <button class="mode-btn" data-mode="negative">负点电荷</button>
+  <button class="mode-btn" data-mode="dipole">等量异种</button>
+  <button class="mode-btn" data-mode="same">等量同种</button>
+  <div class="slider-grp"><label>电荷量 Q</label><input type="range" id="qSlider" min="0.2" max="3.0" value="1.0" step="0.1"><span class="val" id="qVal">1.0</span></div>
+  <div class="slider-grp" id="distGrp"><label>间距 d</label><input type="range" id="dSlider" min="0.5" max="4.0" value="2.0" step="0.1"><span class="val" id="dVal">2.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R/F/T 视角切换 · 1-4 切换模式</div>
+
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ── Scene Init (align Coulomb torsion standard) ──
+const container = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 8, 30);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 50);
+camera.position.set(6, 4.5, 9);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 0, 0);
+controls.enableDamping = true; controls.dampingFactor = 0.08;
+controls.minDistance = 3; controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.75;
+controls.update();
+
+// ── Lights (5-light standard) ──
+scene.add(new THREE.AmbientLight(0x404060, 1.8));
+const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
+keyLight.position.set(8, 10, 5); keyLight.castShadow = true;
+keyLight.shadow.mapSize.set(2048, 2048);
+keyLight.shadow.camera.near = 0.2; keyLight.shadow.camera.far = 30;
+keyLight.shadow.camera.left = -10; keyLight.shadow.camera.right = 10;
+keyLight.shadow.camera.top = 10; keyLight.shadow.camera.bottom = -10;
+keyLight.shadow.bias = -0.00005; keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+scene.add(new THREE.DirectionalLight(0x8899cc, 1.8).position.set(-3, 3, -2));
+scene.add(new THREE.DirectionalLight(0xffffff, 2.0).position.set(0, 2, -5));
+scene.add(new THREE.PointLight(0xffffff, 3, 8).position.set(0, 4, 2));
+
+const root = new THREE.Group();
+scene.add(root);
+
+// ── Reference plane ──
+const gridHelper = new THREE.PolarGridHelper(4.5, 24, 16, 64, 0x30363d, 0x1a1e28);
+gridHelper.position.y = -3.5;
+root.add(gridHelper);
+
+// ── Materials ──
+const matPosCharge = new THREE.MeshStandardMaterial({ color: 0xff4444, roughness: 0.14, metalness: 0.85, emissive: 0x330000, emissiveIntensity: 0.8 });
+const matNegCharge = new THREE.MeshStandardMaterial({ color: 0x4488ff, roughness: 0.14, metalness: 0.85, emissive: 0x000033, emissiveIntensity: 0.8 });
+const matGlowPos = new THREE.MeshBasicMaterial({ color: 0xff6644, transparent: true, opacity: 0.25, depthWrite: false });
+const matGlowNeg = new THREE.MeshBasicMaterial({ color: 0x4488ff, transparent: true, opacity: 0.25, depthWrite: false });
+
+// ── state ──
+let mode = 'positive'; // positive | negative | dipole | same
+let Q = 1.0;
+let d = 2.0;
+const k = 9e9;
+
+// Charge objects
+const chargePosGeom = new THREE.SphereGeometry(0.22, 64, 64);
+const chargeNegGeom = new THREE.SphereGeometry(0.22, 64, 64);
+const glowGeom = new THREE.SphereGeometry(0.32, 32, 32);
+
+const charge1 = { mesh: new THREE.Mesh(chargePosGeom, matPosCharge), glow: new THREE.Mesh(glowGeom, matGlowPos), pos: new THREE.Vector3() };
+const charge2 = { mesh: new THREE.Mesh(chargeNegGeom, matNegCharge), glow: new THREE.Mesh(glowGeom, matGlowNeg), pos: new THREE.Vector3() };
+charge1.mesh.castShadow = true; charge2.mesh.castShadow = true;
+root.add(charge1.mesh); root.add(charge2.mesh);
+root.add(charge1.glow); root.add(charge2.glow);
+
+// Field lines group
+const fieldLinesGroup = new THREE.Group();
+root.add(fieldLinesGroup);
+
+// Particles group
+const particlesGroup = new THREE.Group();
+root.add(particlesGroup);
+
+// ── Helpers ──
+function makeLabel(text, color) {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = color; ctx.font = 'bold 28px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c); tex.minFilter = THREE.LinearFilter;
+  const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, depthWrite: false }));
+  s.scale.set(0.5, 0.25, 1);
+  return s;
+}
+
+const lblQ = makeLabel('+Q', '#ff6666');
+const lblNegQ = makeLabel('-Q', '#4488ff');
+root.add(lblQ); root.add(lblNegQ);
+
+// ── Electric field at a point (superposition) ──
+function Efield(p, charges) {
+  const E = new THREE.Vector3();
+  for (const ch of charges) {
+    const r = new THREE.Vector3().subVectors(p, ch.pos);
+    const dist = r.length();
+    if (dist < 0.25) continue; // avoid singularity
+    const mag = k * Math.abs(ch.q) / (dist * dist);
+    const dir = r.normalize();
+    E.addScaledVector(dir, ch.q > 0 ? mag : -mag);
+  }
+  return E;
+}
+
+// ── Trace a single field line ──
+function traceFieldLine(startPos, charges, maxSteps, stepSize, forward) {
+  const points = [startPos.clone()];
+  let pos = startPos.clone();
+  for (let i = 0; i < maxSteps; i++) {
+    const E = Efield(pos, charges);
+    const Emag = E.length();
+    if (Emag < 1e-6) break;
+    const dir = E.normalize();
+    if (!forward) dir.negate();
+    // Adaptive step: smaller in strong fields
+    const adaptStep = stepSize * Math.min(1, 5 / Math.max(Emag / 1e9, 1));
+    pos.addScaledVector(dir, adaptStep);
+    // Stop if too far
+    if (pos.length() > 7) break;
+    // Stop if near any charge
+    let stop = false;
+    for (const ch of charges) {
+      if (pos.distanceTo(ch.pos) < 0.28) { stop = true; break; }
+    }
+    points.push(pos.clone());
+    if (stop) break;
+  }
+  return points;
+}
+
+// ── Build all field lines ──
+function genStartPoints(nLines, center, radius, distribution) {
+  const pts = [];
+  if (distribution === 'sphere') {
+    // Fibonacci sphere sampling
+    const phi = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < nLines; i++) {
+      const y = 1 - (i / (nLines - 1)) * 2;
+      const radiusAtY = Math.sqrt(1 - y * y);
+      const theta = phi * i;
+      const dir = new THREE.Vector3(Math.cos(theta) * radiusAtY, y, Math.sin(theta) * radiusAtY).normalize();
+      pts.push(dir.multiplyScalar(radius).add(center));
+    }
+  } else if (distribution === 'ring') {
+    // Equatorial rings
+    const layers = Math.ceil(Math.sqrt(nLines));
+    for (let l = 0; l < layers; l++) {
+      const elev = -Math.PI / 2 + Math.PI * (l + 1) / (layers + 1);
+      const nRing = Math.round(nLines * Math.cos(elev) / layers * 2);
+      for (let i = 0; i < Math.max(nRing, 3); i++) {
+        const az = i * Math.PI * 2 / nRing;
+        pts.push(new THREE.Vector3(
+          center.x + Math.cos(elev) * Math.cos(az) * radius,
+          center.y + Math.sin(elev) * radius,
+          center.z + Math.cos(elev) * Math.sin(az) * radius
+        ));
+      }
+    }
+  }
+  return pts;
+}
+
+function buildFieldLines(charges, mode) {
+  // Clear
+  while (fieldLinesGroup.children.length > 0) fieldLinesGroup.remove(fieldLinesGroup.children[0]);
+  while (particlesGroup.children.length > 0) particlesGroup.remove(particlesGroup.children[0]);
+  window._particleData = [];
+
+  const nLines = mode === 'positive' || mode === 'negative' ? 64 : 80;
+  let startPts = [];
+  let forward = true;
+
+  if (mode === 'positive') {
+    startPts = genStartPoints(nLines, charges[0].pos, 0.28, 'sphere');
+    forward = true;
+  } else if (mode === 'negative') {
+    startPts = genStartPoints(nLines, charges[0].pos, 4.5, 'sphere');
+    forward = true;
+  } else if (mode === 'dipole') {
+    startPts = genStartPoints(nLines, charges[0].pos, 0.28, 'sphere');
+    forward = true;
+  } else if (mode === 'same') {
+    const half = Math.floor(nLines / 2);
+    for (const ch of charges) {
+      const pts = genStartPoints(half, ch.pos, 0.28, 'sphere');
+      startPts.push(...pts);
+    }
+    forward = true;
+  }
+
+  const maxSteps = 120;
+  const stepSize = 0.12;
+
+  for (const sp of startPts) {
+    const pts = traceFieldLine(sp, charges, maxSteps, stepSize, forward);
+    if (pts.length < 2) continue;
+
+    // Create tube
+    const curve = new THREE.CatmullRomCurve3(pts);
+    const tubeGeom = new THREE.TubeGeometry(curve, pts.length * 2, 0.025, 8, false);
+    // Color gradient: red near +Q, blue far / near -Q
+    const colors = [];
+    const posArr = tubeGeom.attributes.position;
+    for (let i = 0; i < posArr.count; i++) {
+      const v = new THREE.Vector3(posArr.getX(i), posArr.getY(i), posArr.getZ(i));
+      const t = i / (posArr.count - 1);
+      // Distance from nearest charge
+      let minDist = Infinity, nearestQ = 0;
+      for (const ch of charges) {
+        const dist = v.distanceTo(ch.pos);
+        if (dist < minDist) { minDist = dist; nearestQ = ch.q; }
+      }
+      const normDist = Math.min(minDist / 3, 1);
+      let r, g, b;
+      if (nearestQ > 0) {
+        r = 1.0; g = 0.3 + 0.5 * normDist; b = 0.15 + 0.5 * normDist;
+      } else {
+        r = 0.2 + 0.3 * normDist; g = 0.4 + 0.3 * normDist; b = 0.7 + 0.3 * (1 - normDist);
+      }
+      colors.push(r, g, b);
+    }
+    tubeGeom.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+    const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.45, metalness: 0.05, emissive: new THREE.Color(0x111111), emissiveIntensity: 0.3 });
+    const tube = new THREE.Mesh(tubeGeom, mat);
+    tube.castShadow = true; tube.receiveShadow = true;
+    fieldLinesGroup.add(tube);
+
+    // Particle data
+    window._particleData.push({ curve, length: curve.getLength(), nParticles: 5 + Math.floor(Math.random() * 5), offset: Math.random() });
+  }
+
+  // Create particle meshes
+  const dotGeom = new THREE.SphereGeometry(0.04, 6, 6);
+  for (const pd of window._particleData) {
+    for (let i = 0; i < pd.nParticles; i++) {
+      const dot = new THREE.Mesh(dotGeom, new THREE.MeshBasicMaterial({ color: 0xffffff, depthWrite: false }));
+      dot.scale.set(0.6, 0.6, 0.6);
+      particlesGroup.add(dot);
+      dot.userData = { data: pd, idx: i, total: pd.nParticles };
+    }
+  }
+}
+
+// ── Update charges ──
+let charges = [];
+let posQ1, posQ2;
+
+function setupCharges() {
+  if (mode === 'positive') {
+    posQ1 = new THREE.Vector3(0, 0, 0);
+    charges = [{ pos: posQ1, q: Q }];
+    charge1.mesh.position.copy(posQ1); charge1.glow.position.copy(posQ1);
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = false; charge2.glow.visible = false;
+    lblQ.position.set(0.45, 0.45, 0); lblQ.visible = true; lblNegQ.visible = false;
+    if (window._lblPos2) window._lblPos2.visible = false;
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+  } else if (mode === 'negative') {
+    posQ1 = new THREE.Vector3(0, 0, 0);
+    charges = [{ pos: posQ1, q: -Q }];
+    charge1.mesh.position.copy(posQ1); charge1.glow.position.copy(posQ1);
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = false; charge2.glow.visible = false;
+    lblQ.visible = false; lblNegQ.position.set(0.45, 0.45, 0); lblNegQ.visible = true;
+    if (window._lblPos2) window._lblPos2.visible = false;
+    charge1.mesh.material = matNegCharge; charge1.glow.material = matGlowNeg;
+  } else if (mode === 'dipole') {
+    posQ1 = new THREE.Vector3(-d / 2, 0, 0); posQ2 = new THREE.Vector3(d / 2, 0, 0);
+    charges = [{ pos: posQ1, q: Q }, { pos: posQ2, q: -Q }];
+    charge1.mesh.position.copy(posQ1); charge1.glow.position.copy(posQ1);
+    charge2.mesh.position.copy(posQ2); charge2.glow.position.copy(posQ2);
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = true; charge2.glow.visible = true;
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+    charge2.mesh.material = matNegCharge; charge2.glow.material = matGlowNeg;
+    lblQ.position.set(-d / 2, 0.5, 0); lblQ.visible = true;
+    lblNegQ.position.set(d / 2, 0.5, 0); lblNegQ.visible = true;
+    if (window._lblPos2) window._lblPos2.visible = false;
+  } else if (mode === 'same') {
+    posQ1 = new THREE.Vector3(-d / 2, 0, 0); posQ2 = new THREE.Vector3(d / 2, 0, 0);
+    charges = [{ pos: posQ1, q: Q }, { pos: posQ2, q: Q }];
+    charge1.mesh.position.copy(posQ1); charge1.glow.position.copy(posQ1);
+    charge2.mesh.position.copy(posQ2); charge2.glow.position.copy(posQ2);
+    charge1.mesh.visible = true; charge1.glow.visible = true;
+    charge2.mesh.visible = true; charge2.glow.visible = true;
+    charge1.mesh.material = matPosCharge; charge1.glow.material = matGlowPos;
+    charge2.mesh.material = matPosCharge; charge2.glow.material = matGlowPos;
+    lblQ.position.set(-d / 2, 0.5, 0); lblQ.visible = true;
+    lblNegQ.position.set(d / 2, 0.5, 0); lblNegQ.visible = false;
+    // 两电荷均为+Q，用 lblPos2 显示
+    if (!window._lblPos2) { window._lblPos2 = makeLabel('+Q', '#ff6666'); root.add(window._lblPos2); }
+    window._lblPos2.scale.set(0.5, 0.25, 1); window._lblPos2.position.set(d / 2, 0.5, 0); window._lblPos2.visible = true;
+  }
+  buildFieldLines(charges, mode);
+  updateUI();
+}
+
+function rebuild() { setupCharges(); }
+
+// ── UI update ──
+function fmt(n, d) { return n.toFixed(d); }
+function sci(n) {
+  if (Math.abs(n) >= 1e9) return (n / 1e9).toFixed(2) + '×10⁹';
+  return n.toFixed(2);
+}
+
+function updateUI() {
+  document.getElementById('vMode').textContent =
+    mode === 'positive' ? '正点电荷' : mode === 'negative' ? '负点电荷' : mode === 'dipole' ? '等量异种' : '等量同种';
+  document.getElementById('vQ').textContent = fmt(Q, 2);
+  document.getElementById('vE').textContent = sci(k * Q) + ' N/C';
+  document.getElementById('qVal').textContent = fmt(Q, 1);
+
+  const distItem = document.getElementById('itemDist');
+  const distGrp = document.getElementById('distGrp');
+  if (mode === 'dipole' || mode === 'same') {
+    distItem.style.display = ''; distGrp.style.display = '';
+    document.getElementById('vD').textContent = fmt(d, 2);
+    document.getElementById('dVal').textContent = fmt(d, 1);
+  } else {
+    distItem.style.display = 'none'; distGrp.style.display = 'none';
+  }
+
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.toggle('active', b.dataset.mode === mode));
+}
+
+// ── Event handlers ──
+document.querySelectorAll('.mode-btn').forEach(btn => {
+  btn.addEventListener('click', () => { mode = btn.dataset.mode; rebuild(); });
+});
+
+document.getElementById('qSlider').addEventListener('input', function() {
+  Q = parseFloat(this.value);
+  for (const ch of charges) ch.q = ch.q > 0 ? Q : -Q;
+  rebuild();
+});
+
+document.getElementById('dSlider').addEventListener('input', function() {
+  d = parseFloat(this.value);
+  rebuild();
+});
+
+// Keyboard
+window.addEventListener('keydown', e => {
+  const modes = { '1': 'positive', '2': 'negative', '3': 'dipole', '4': 'same' };
+  if (modes[e.key]) { mode = modes[e.key]; rebuild(); }
+  if (e.key.toLowerCase() === 'r') { camera.position.set(6, 4.5, 9); controls.target.set(0, 0, 0); controls.update(); }
+  if (e.key.toLowerCase() === 'f') { camera.position.set(0, 0, 9); controls.target.set(0, 0, 0); controls.update(); }
+  if (e.key.toLowerCase() === 't') { camera.position.set(0, 9, 0.1); controls.target.set(0, 0, 0); controls.update(); }
+});
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ── Animation ──
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(clock.getDelta(), 1 / 30);
+  controls.update();
+
+  // Move particles along curves
+  if (window._particleData) {
+    const speed = 1.5;
+    particlesGroup.children.forEach(dot => {
+      const { data, idx, total } = dot.userData;
+      if (!data) return;
+      let t = ((data.offset + clock.elapsedTime * speed / data.length) + idx / total) % 1;
+      const pt = data.curve.getPointAt(t);
+      dot.position.copy(pt);
+    });
+  }
+
+  renderer.render(scene, camera);
+}
+
+setupCharges();
+requestAnimationFrame(animate);
+</script>
+
+</html>
