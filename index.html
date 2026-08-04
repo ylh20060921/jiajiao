@@ -957,7 +957,7 @@ function thumbHtml(m){
     : IC_CUBE;
 }
 function tagsHtml(m){
-  const tags=(m.tags||[]).slice(0,3).map(function(t){const c=tagColor(t);return '<span class="tag" style="background:'+c.bg+';color:'+c.fg+';box-shadow:0 0 12px '+c.glow+'">'+escapeHtml(t)+'</span>';}).join('');
+  let tags=(m.tags||[]).slice(0,3).map(function(t){const c=tagColor(t);return '<span class="tag" style="background:'+c.bg+';color:'+c.fg+';box-shadow:0 0 12px '+c.glow+'">'+escapeHtml(t)+'</span>';}).join('');
   if(m.cloud)tags+='<span class="cloud-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>云端</span>';
   return tags;
 }
@@ -2161,6 +2161,7 @@ async function render(){
     main.innerHTML=`<div class="empty"><div class="empty-icon">${IC_WARN}</div><h2>应用加载失败</h2><p>${escapeHtml(e.message||String(e))}</p></div>`;
     return;
   }
+  try {
   // ===== 3D 模型库 =====
   if(state.view==='viewer'){
     const model=isCloudId(state.currentModelId)?getCloudModel(state.currentModelId):await dbGet(STORE_MODELS,state.currentModelId);
@@ -2200,6 +2201,10 @@ async function render(){
   bindList();
   applyKeyFocus();
   if(window.__invalidateLightCache)window.__invalidateLightCache();   // 失效光影缓存，避免用旧卡片列表
+  } catch(e) {
+    console.error('模型库渲染失败',e);
+    main.innerHTML=`<div class="empty"><div class="empty-icon">${IC_WARN}</div><h2>模型库加载失败</h2><p>${escapeHtml(e.message||String(e))}</p><p style="color:var(--muted);font-size:13px">请刷新页面重试</p></div>`;
+  }
 }
 
 // ---------- 绑定 ----------
@@ -2700,11 +2705,11 @@ function buildCloudModels(files){
     return {
       id:'cloud_'+f.sha.substring(0,12),
       filename:f.name,originalName:f.name,
-      size:f.size||0,note:'',tags:['云端'],
+      size:f.size||0,note:'',tags:[],
       title:f.name.replace(/\.(html|htm)$/i,''),thumb:'',fav:false,
       cloud:true,sha:f.sha,
       downloadUrl:CLOUD_RAW+encodeURIComponent(f.name),
-      createdAt:f.name.match(/(\d{8,})/)?new Date(parseInt(f.name.match(/(\d{8,})/)[1].substring(0,13))).getTime():null
+      createdAt:f.name.match(/(\d{8,})/)?new Date(parseInt(f.name.match(/(\d{8,})/)[1].substring(0,13))).getTime():Date.now()
     };
   });
 }
@@ -2796,6 +2801,33 @@ async function start(){
     console.error('启动失败',e);
   }
 }
+// ========== 全局错误兜底 ==========
+window.onerror=function(msg,src,line,col,err){
+  console.error('全局错误',{msg,src,line,col,err});
+  var app=document.getElementById('app');
+  if(app&&!app.querySelector('.error-banner')){
+    var banner=document.createElement('div');
+    banner.className='error-banner';
+    banner.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(220,38,38,.95);color:#fff;padding:10px 16px;font-size:13px;text-align:center;cursor:pointer';
+    banner.textContent='程序出现异常，点击此处刷新页面';
+    banner.onclick=function(){location.reload();};
+    document.body.appendChild(banner);
+  }
+  return true;
+};
+window.addEventListener('unhandledrejection',function(e){
+  console.error('未处理的Promise拒绝',e.reason);
+  if(e.reason&&e.reason.message&&e.reason.message.includes('Failed to fetch'))return; // 静默网络错误
+  var app=document.getElementById('app');
+  if(app&&!app.querySelector('.error-banner')){
+    var banner=document.createElement('div');
+    banner.className='error-banner';
+    banner.style.cssText='position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(220,38,38,.95);color:#fff;padding:10px 16px;font-size:13px;text-align:center;cursor:pointer';
+    banner.textContent='操作异常，点击此处刷新页面';
+    banner.onclick=function(){location.reload();};
+    document.body.appendChild(banner);
+  }
+});
 start();
 </script>
 </body>
