@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>欧姆定律 U=IR — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);
+  --slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:18px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10.5px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.green{color:var(--accent-green)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .bar-wrap{width:60px;height:6px;background:var(--slider-track);border-radius:3px;margin-top:3px;overflow:hidden}
+#top-panel .item .bar-fill{height:100%;border-radius:3px;transition:width 0.15s}
+#top-panel .item .bar-fill.u{background:var(--accent-red)}
+#top-panel .item .bar-fill.r{background:var(--accent-blue)}
+#top-panel .item .bar-fill.i{background:var(--accent-green)}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+#formula-label{
+  position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:9;
+  font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+  color:var(--accent-gold);text-shadow:0 0 20px rgba(210,153,29,0.4);pointer-events:none;
+}
+@media(max-width:900px){#top-panel{gap:8px;padding:8px 12px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="formula-label">I = U / R</div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">电压 U</div><div class="val red" id="vU">3.0 V</div>
+    <div class="bar-wrap"><div class="bar-fill u" id="barU" style="width:50%"></div></div>
+  </div>
+  <div class="item"><div class="lbl">电阻 R</div><div class="val blue" id="vR">2.0 Ω</div>
+    <div class="bar-wrap"><div class="bar-fill r" id="barR" style="width:50%"></div></div>
+  </div>
+  <div class="item"><div class="lbl">电流 I</div><div class="val green" id="vI">1.50 A</div>
+    <div class="bar-wrap"><div class="bar-fill i" id="barI" style="width:50%"></div></div>
+  </div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>电压 U (V)</label><input type="range" id="uSlider" min="0.5" max="12" value="3" step="0.1"><span class="val" id="uVal">3.0</span></div>
+  <div class="slider-grp"><label>电阻 R (Ω)</label><input type="range" id="rSlider" min="0.5" max="20" value="2" step="0.1"><span class="val" id="rVal">2.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.Fog(0x0d1117,8,30);
+
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,25);
+camera.position.set(2,4,6);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0.2,0);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=14;
+controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);
+key.position.set(8,10,5);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=0.2;key.shadow.camera.far=30;
+key.shadow.camera.left=-10;key.shadow.camera.right=10;
+key.shadow.camera.top=10;key.shadow.camera.bottom=-10;
+key.shadow.bias=-0.00005;key.shadow.normalBias=0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-3,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-5));
+scene.add(new THREE.PointLight(0xffffff,3,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,20,12,64,0x30363d,0x1a1e28);
+grid.position.y=-2.8;root.add(grid);
+
+const wireGrp=new THREE.Group();root.add(wireGrp);
+const batteryGrp=new THREE.Group();root.add(batteryGrp);
+const resistorGrp=new THREE.Group();root.add(resistorGrp);
+const particleGrp=new THREE.Group();root.add(particleGrp);
+const arrowGrp=new THREE.Group();root.add(arrowGrp);
+const labelGrp=new THREE.Group();root.add(labelGrp);
+
+let U=3,R=2;
+const nParticles=60;
+const cw=3.2,ch=2.0;
+const halfW=cw/2,halfH=ch/2;
+const wireR=0.06;
+
+function disposeGroup(grp){
+  while(grp.children.length>0){
+    const ch=grp.children[0];
+    if(ch.geometry)ch.geometry.dispose();
+    if(ch.material){
+      if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+      else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}
+    }
+    grp.remove(ch);
+  }
+}
+
+function buildWireTube(pts,r,mat){
+  const curve=new THREE.CatmullRomCurve3(pts,false,'catmullrom',0.5);
+  const tubeGeom=new THREE.TubeGeometry(curve,64,r,8,false);
+  const mesh=new THREE.Mesh(tubeGeom,mat);mesh.castShadow=true;
+  return mesh;
+}
+
+function fullWirePath(){
+  const pts=[
+    new THREE.Vector3(-halfW,halfH,0),new THREE.Vector3(-halfW+0.5,halfH,0),
+    new THREE.Vector3(-halfW+1.2,halfH,0),new THREE.Vector3(halfW-0.5,halfH,0),
+    new THREE.Vector3(halfW,halfH,0),new THREE.Vector3(halfW,-halfH,0),
+    new THREE.Vector3(halfW-0.5,-halfH,0),new THREE.Vector3(-halfW+0.5,-halfH,0),
+    new THREE.Vector3(-halfW,-halfH,0),new THREE.Vector3(-halfW,-halfH+0.3,0),
+  ];
+  return pts;
+}
+
+function buildWires(){
+  disposeGroup(wireGrp);
+  const mat=new THREE.MeshStandardMaterial({color:0xcca866,roughness:0.3,metalness:0.9});
+  const pts=fullWirePath();
+  for(let i=0;i<pts.length-1;i++){
+    if((i===1||i===2)&&pts[i].x<-halfW+1.3)continue;
+    if(i===8||i===9)continue;
+    wireGrp.add(buildWireTube([pts[i],pts[i+1]],wireR,mat));
+  }
+}
+
+function buildBattery(){
+  disposeGroup(batteryGrp);
+  const posX=-halfW+1.1;
+  const bigGeom=new THREE.BoxGeometry(0.6,0.18,0.6);
+  const smallGeom=new THREE.BoxGeometry(0.22,0.18,0.22);
+  const posMat=new THREE.MeshStandardMaterial({color:0xff4444,roughness:0.2,metalness:0.6,emissive:0x220000,emissiveIntensity:0.7});
+  const negMat=new THREE.MeshStandardMaterial({color:0x4488ff,roughness:0.2,metalness:0.6,emissive:0x000022,emissiveIntensity:0.7});
+  const bigM=new THREE.Mesh(bigGeom,posMat);bigM.position.set(posX,halfH+0.35,0);batteryGrp.add(bigM);
+  const smallM=new THREE.Mesh(smallGeom,negMat);smallM.position.set(posX,halfH-0.35,0);batteryGrp.add(smallM);
+  const connGeom=new THREE.CylinderGeometry(0.12,0.12,ch+0.7,8);
+  const conn=new THREE.Mesh(connGeom,new THREE.MeshStandardMaterial({color:0x666677,roughness:0.4,metalness:0.5}));
+  conn.position.set(posX,0,0);batteryGrp.add(conn);
+  const labelCanvas=document.createElement('canvas');labelCanvas.width=128;labelCanvas.height=32;
+  const lctx=labelCanvas.getContext('2d');
+  lctx.fillStyle='#ffffff';lctx.font='bold 14px Inter,Microsoft YaHei';lctx.textAlign='center';
+  lctx.fillText('电源',64,22);
+  const lTex=new THREE.CanvasTexture(labelCanvas);lTex.minFilter=THREE.LinearFilter;
+  const lSp=new THREE.Sprite(new THREE.SpriteMaterial({map:lTex,transparent:true,depthTest:false}));
+  lSp.scale.set(1,0.25,1);lSp.position.set(posX+0.45,0,0);batteryGrp.add(lSp);
+}
+
+function buildResistor(){
+  disposeGroup(resistorGrp);
+  const posX=halfW-0.25;
+  const bodyGeom=new THREE.CylinderGeometry(0.25,0.25,ch+0.15,16);
+  const bodyMat=new THREE.MeshStandardMaterial({color:0xcc8844,roughness:0.5,metalness:0.1,emissive:0x080400,emissiveIntensity:0.3});
+  const body=new THREE.Mesh(bodyGeom,bodyMat);body.position.set(posX,0,0);body.castShadow=true;
+  body.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1),Math.PI/2);
+  resistorGrp.add(body);
+  for(let i=-2;i<=2;i++){
+    const stripeGeom=new THREE.CylinderGeometry(0.27,0.27,0.06,12);
+    const stripe=new THREE.Mesh(stripeGeom,new THREE.MeshStandardMaterial({color:0x553311,roughness:0.5,metalness:0.1}));
+    stripe.position.set(posX,i*0.42,0);stripe.quaternion.copy(body.quaternion);resistorGrp.add(stripe);
+  }
+  const labelCanvas=document.createElement('canvas');labelCanvas.width=128;labelCanvas.height=32;
+  const lctx=labelCanvas.getContext('2d');
+  lctx.fillStyle='#ffcc88';lctx.font='bold 14px Inter,Microsoft YaHei';lctx.textAlign='center';
+  lctx.fillText('电阻',64,22);
+  const lTex=new THREE.CanvasTexture(labelCanvas);lTex.minFilter=THREE.LinearFilter;
+  const lSp=new THREE.Sprite(new THREE.SpriteMaterial({map:lTex,transparent:true,depthTest:false}));
+  lSp.scale.set(0.8,0.2,1);lSp.position.set(posX+0.45,0,0);resistorGrp.add(lSp);
+}
+
+function buildLabels(){
+  disposeGroup(labelGrp);
+  const makeLabel=(text,x,y,color)=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=96;canvas.height=36;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle=color;ctx.font='bold 18px Inter,Microsoft YaHei';ctx.textAlign='center';
+    ctx.fillText(text,48,26);
+    const tex=new THREE.CanvasTexture(canvas);tex.minFilter=THREE.LinearFilter;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.scale.set(0.7,0.26,1);sp.position.set(x,y,0.3);
+    return sp;
+  };
+  labelGrp.add(makeLabel('+',-halfW+1.1,halfH+0.55,'#ff6666'));
+  labelGrp.add(makeLabel('−',-halfW+1.1,-halfH-0.45,'#6688ff'));
+}
+
+function buildArrows(){
+  disposeGroup(arrowGrp);
+  const arrowGeom=new THREE.ConeGeometry(0.06,0.18,5);
+  const arrowMat=new THREE.MeshStandardMaterial({color:0xffdd66,roughness:0.2,metalness:0.05,emissive:0x221100,emissiveIntensity:0.6});
+  const spacing=0.55;
+  const marginX=0.45,marginY=0.35;
+  const dirX=new THREE.Vector3(1,0,0),dirY=new THREE.Vector3(0,1,0),dirNY=new THREE.Vector3(0,-1,0),dirNX=new THREE.Vector3(-1,0,0);
+  const edges=[
+    {x0:-halfW+marginX,x1:halfW-marginX,y:halfH,dir:dirX},
+    {x:halfW,y0:halfH-marginY,y1:-halfH+marginY,dir:dirNY},
+    {x0:halfW-marginX,x1:-halfW+marginX,y:-halfH,dir:dirNX},
+    {x:-halfW,y0:-halfH+marginY,y1:halfH-0.8,dir:dirY},
+  ];
+  for(const e of edges){
+    const isHoriz=e.y!==undefined;
+    if(isHoriz){
+      for(let x=e.x0+spacing/2;x<e.x1;x+=spacing){
+        const arr=new THREE.Mesh(arrowGeom,arrowMat);
+        arr.position.set(x,e.y,0);
+        arr.quaternion.setFromUnitVectors(dirY,e.dir);
+        arrowGrp.add(arr);
+      }
+    }else{
+      for(let y=e.y0-spacing/2;y>e.y1;y-=spacing){
+        const arr=new THREE.Mesh(arrowGeom,arrowMat);
+        arr.position.set(e.x,y,0);
+        arr.quaternion.setFromUnitVectors(dirY,e.dir);
+        arrowGrp.add(arr);
+      }
+    }
+  }
+}
+
+const particles=[];
+const pGeom=new THREE.SphereGeometry(0.045,5,5);
+function spawnParticles(){
+  disposeGroup(particleGrp);
+  particles.length=0;
+  const pMat=new THREE.MeshStandardMaterial({color:0x44ddff,roughness:0.1,metalness:0.3,emissive:0x003344,emissiveIntensity:1.8});
+  for(let i=0;i<nParticles;i++){
+    const mesh=new THREE.Mesh(pGeom,pMat);
+    mesh.userData={arc:Math.random()*Math.PI*2,speed:0.4+Math.random()*0.6};
+    particleGrp.add(mesh);
+    particles.push(mesh);
+  }
+}
+
+function getParticlePos(arc){
+  const xStart=-halfW+1.2,xEnd=halfW;
+  const lenTop=xEnd-xStart;
+  const lenRight=ch-0.5;
+  const lenBottom=xEnd-xStart;
+  const lenLeft=ch-0.5;
+  const totalLen=lenTop+lenRight+lenBottom+lenLeft;
+  const cumul=[0,lenTop,lenTop+lenRight,lenTop+lenRight+lenBottom];
+  let d=arc*totalLen;
+  d=d%totalLen;
+  let x,y;
+  if(d<cumul[1]){x=xStart+d;y=halfH;}
+  else if(d<cumul[2]){x=xEnd;y=halfH-(d-cumul[1]);}
+  else if(d<cumul[3]){x=xEnd-(d-cumul[2]);y=-halfH;}
+  else{x=-halfW+1.1;y=-halfH+(d-cumul[3]);}
+  return {x,y};
+}
+
+let I=U/R;
+function updateParticles(dt){
+  I=U/Math.max(R,0.01);
+  const speedMult=I*3.5;
+  for(const p of particles){
+    p.userData.arc+=dt*0.6*speedMult*p.userData.speed;
+    const pos=getParticlePos(p.userData.arc);
+    p.position.set(pos.x,pos.y,0);
+  }
+}
+
+function updateUI(){
+  document.getElementById('vU').textContent=U.toFixed(1)+' V';
+  document.getElementById('vR').textContent=R.toFixed(1)+' Ω';
+  document.getElementById('vI').textContent=I.toFixed(2)+' A';
+  const uMax=12,rMax=20,iMax=uMax/Math.min(R,0.5);
+  document.getElementById('barU').style.width=Math.min(100,(U/uMax)*100).toFixed(0)+'%';
+  document.getElementById('barR').style.width=Math.min(100,(R/rMax)*100).toFixed(0)+'%';
+  document.getElementById('barI').style.width=Math.min(100,(I/Math.max(0.01,iMax))*100).toFixed(0)+'%';
+  document.getElementById('uVal').textContent=U.toFixed(1);
+  document.getElementById('rVal').textContent=R.toFixed(1);
+}
+
+function fullRebuild(){
+  buildWires();
+  buildBattery();
+  buildResistor();
+  buildLabels();
+  buildArrows();
+  spawnParticles();
+  updateUI();
+}
+
+document.getElementById('uSlider').addEventListener('input',function(){U=parseFloat(this.value);updateUI();});
+document.getElementById('rSlider').addEventListener('input',function(){R=parseFloat(this.value);updateUI();});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(2,4,6);controls.target.set(0,0.2,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  controls.update();
+  updateParticles(dt);
+  renderer.render(scene,camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+</html>
