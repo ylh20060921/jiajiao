@@ -949,7 +949,7 @@ function switchApp(id){
 // ---------- 卡片渲染助手（收藏/缩略图/标签 + 三种视图卡片） ----------
 function favStar(m,store){
   const st=store||STORE_MODELS;
-  return `<button class="card-fav ${m.fav?'on':''}" title="${m.fav?'取消收藏':'收藏'}" onclick="event.stopPropagation();toggleFavIn('${st}',${m.id})">${m.fav?'★':'☆'}</button>`;
+  return `<button class="card-fav ${m.fav?'on':''}" title="${m.fav?'取消收藏':'收藏'}" onclick="event.stopPropagation();toggleFavIn('${st}','${m.id}')">${m.fav?'★':'☆'}</button>`;
 }
 function thumbHtml(m){
   return m.thumb
@@ -970,7 +970,7 @@ function stackCard(m,i,models){
   const sy=(-i*297)+'px';                    // 往上移：每张往上移 297px（距底边距离 i*297 像素，translateY 负值往上）
   const sry=(78-i)+'deg';                    // 倾斜角度：每张倾角递减 78-i，越往右越倾斜
   return `
-  <div class="card ${selected?'card-selected':''}" data-id="${m.id}" style="--stack-x:${sx};--stack-y:${sy};--stack-ry:${sry};z-index:${20-i}" data-ry="${sry}" data-sx="${(-90+(i-mid)*40)}" data-sy="${(-i*297)}" onclick="${inSelect?`toggleSelect(${m.id})`:`openViewer(${m.id},event)`}">
+  <div class="card ${selected?'card-selected':''}" data-id="${m.id}" style="--stack-x:${sx};--stack-y:${sy};--stack-ry:${sry};z-index:${20-i}" data-ry="${sry}" data-sx="${(-90+(i-mid)*40)}" data-sy="${(-i*297)}" onclick="${inSelect?`toggleSelect('${m.id}')`:`openViewer('${m.id}',event)`}">
     ${inSelect?`<div class="card-check ${selected?'checked':''}">${selected?'✓':''}</div>`:favStar(m)}
     <div class="card-thumb">${thumbHtml(m)}</div>
     <div class="card-body">
@@ -987,7 +987,7 @@ function gridCard(m){
   const selected=state.selectedIds.has(m.id);
   const inSelect=state.selectMode;
   return `
-  <div class="card card-flat ${selected?'card-selected':''}" data-id="${m.id}" onclick="${inSelect?`toggleSelect(${m.id})`:`openViewer(${m.id},event)`}">
+  <div class="card card-flat ${selected?'card-selected':''}" data-id="${m.id}" onclick="${inSelect?`toggleSelect('${m.id}')`:`openViewer('${m.id}',event)`}">
     ${inSelect?`<div class="card-check ${selected?'checked':''}">${selected?'✓':''}</div>`:favStar(m)}
     <div class="card-thumb">${thumbHtml(m)}</div>
     <div class="card-body">
@@ -1004,7 +1004,7 @@ function listRow(m){
   const selected=state.selectedIds.has(m.id);
   const inSelect=state.selectMode;
   return `
-  <div class="card card-flat card-list ${selected?'card-selected':''}" data-id="${m.id}" onclick="${inSelect?`toggleSelect(${m.id})`:`openViewer(${m.id},event)`}">
+  <div class="card card-flat card-list ${selected?'card-selected':''}" data-id="${m.id}" onclick="${inSelect?`toggleSelect('${m.id}')`:`openViewer('${m.id}',event)`}">
     ${inSelect?`<button class="card-check ${selected?'checked':''}">${selected?'✓':''}</button>`:favStar(m)}
     <div class="list-thumb">${m.thumb?`<img src="${m.thumb}" alt="" loading="lazy" onerror="this.style.display='none'">${IC_CUBE}`:IC_CUBE}</div>
     <div class="list-main">
@@ -1046,7 +1046,7 @@ function renderRecents(all){
   return `<div class="recents-strip">
     <div class="recents-title">🕘 最近浏览</div>
     <div class="recents">${rec.map(m=>`
-      <div class="recent-card" onclick="openViewer(${m.id},event)" title="${escapeHtml(m.originalName)}">
+      <div class="recent-card" onclick="openViewer('${m.id}',event)" title="${escapeHtml(m.originalName)}">
         <div class="recent-thumb">${m.thumb?`<img src="${m.thumb}" loading="lazy">`:IC_CUBE}</div>
         <div class="recent-name">${escapeHtml(m.originalName)}</div>
       </div>`).join('')}
@@ -1292,14 +1292,14 @@ function renderViewer(model){
           <label>备注<textarea id="noteEdit" rows="3" maxlength="2000">${escapeHtml(model.note||'')}</textarea></label>
           <label>标签（逗号分隔）<input type="text" id="tagEdit" value="${escapeHtml((model.tags||[]).join(', '))}" placeholder="例如：角色, 建筑物"></label>
           <div style="display:flex;gap:8px">
-            <button class="topbar-btn btn-accent" style="flex:1;justify-content:center" onclick="saveModelEdit(${model.id})">保存</button>
-            <button class="topbar-btn btn-danger" style="flex:1;justify-content:center" onclick="deleteCurrentModel(${model.id})">删除</button>
+            <button class="topbar-btn btn-accent" style="flex:1;justify-content:center" onclick="saveModelEdit('${model.id}')">保存</button>
+            <button class="topbar-btn btn-danger" style="flex:1;justify-content:center" onclick="deleteCurrentModel('${model.id}')">删除</button>
           </div>
         </div>
         <div class="side-actions">
-          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="toggleFav(${model.id})">${model.fav?'★ 已收藏':'☆ 收藏'}</button>
-          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="downloadModel(${model.id})">⬇ 下载</button>
-          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="openFull(${model.id})">⛶ 全屏</button>
+          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="toggleFav('${model.id}')">${model.fav?'★ 已收藏':'☆ 收藏'}</button>
+          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="downloadModel('${model.id}')">⬇ 下载</button>
+          <button class="topbar-btn btn-ghost" style="flex:1;justify-content:center" onclick="openFull('${model.id}')">⛶ 全屏</button>
         </div>
       </aside>
       <main class="viewer-main">
