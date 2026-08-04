@@ -2428,12 +2428,13 @@ async function loadModelIntoIframe(id){
     if(!cm)return;
     const frame=document.getElementById('modelFrame');
     if(!frame)return;
-    // fetch 后创建 Blob URL，避免直接使用 downloadUrl 触发浏览器下载
     try{
       const resp=await fetch(cm.downloadUrl);
-      const blob=await resp.blob();
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      const txt=await resp.text();
+      const blob=new Blob([txt],{type:'text/html'});
       frame.src=URL.createObjectURL(blob);
-    }catch(e){console.error('云端模型加载失败',e);}
+    }catch(e){console.error('云端模型加载失败',e);alert('云端文件加载失败: '+e.message);}
     return;
   }
   const r=await getModelBlob(id);
@@ -2445,7 +2446,14 @@ async function loadModelIntoIframe(id){
 async function openFull(id){
   if(isCloudId(id)){
     const cm=getCloudModel(id);
-    if(cm)window.open(cm.downloadUrl,'_blank');
+    if(!cm)return;
+    try{
+      const resp=await fetch(cm.downloadUrl);
+      if(!resp.ok)throw new Error('HTTP '+resp.status);
+      const txt=await resp.text();
+      const blob=new Blob([txt],{type:'text/html'});
+      window.open(URL.createObjectURL(blob),'_blank');
+    }catch(e){console.error('云端模型全屏失败',e);alert('云端文件加载失败: '+e.message);}
     return;
   }
   const r=await getModelBlob(id);
