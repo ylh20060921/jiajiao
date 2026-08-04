@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电功与电功率 P=UI — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--accent-green:#3fb950;--accent-purple:#bc8cff;
+  --border:rgba(48,54,61,0.8);--slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.green{color:var(--accent-green)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .val.purple{color:var(--accent-purple)}
+#top-panel .item .bar-wrap{width:60px;height:6px;background:var(--slider-track);border-radius:3px;margin-top:3px;overflow:hidden}
+#top-panel .item .bar-fill{height:100%;border-radius:3px;transition:width 0.15s}
+#top-panel .item .bar-fill.p{background:var(--accent-gold)}
+#top-panel .item .bar-fill.w{background:var(--accent-purple)}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-gold);border:2px solid #fff;box-shadow:0 0 12px rgba(210,153,29,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+#formula-label{
+  position:fixed;top:100px;left:50%;transform:translateX(-50%);z-index:9;
+  font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;
+  color:var(--accent-gold);text-shadow:0 0 20px rgba(210,153,29,0.4);pointer-events:none;
+}
+@media(max-width:900px){#top-panel{gap:8px;padding:8px 12px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="formula-label">P = UI &nbsp;=&nbsp; I²R &nbsp;=&nbsp; U²/R</div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">电压 U</div><div class="val red" id="vU">6.0 V</div></div>
+  <div class="item"><div class="lbl">电阻 R</div><div class="val blue" id="vR">3.0 Ω</div></div>
+  <div class="item"><div class="lbl">电流 I</div><div class="val green" id="vI">2.00 A</div></div>
+  <div class="item"><div class="lbl">功率 P</div><div class="val gold" id="vP">12.0 W</div>
+    <div class="bar-wrap"><div class="bar-fill p" id="barP" style="width:50%"></div></div>
+  </div>
+  <div class="item"><div class="lbl">电功 W</div><div class="val purple" id="vW">0.00 Wh</div>
+    <div class="bar-wrap"><div class="bar-fill w" id="barW" style="width:0%"></div></div>
+  </div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>电压 U (V)</label><input type="range" id="uSlider" min="1" max="24" value="6" step="0.1"><span class="val" id="uVal">6.0</span></div>
+  <div class="slider-grp"><label>电阻 R (Ω)</label><input type="range" id="rSlider" min="0.5" max="20" value="3" step="0.1"><span class="val" id="rVal">3.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.Fog(0x0d1117,8,30);
+
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(2,2.5,5.5);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0,0);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=3;controls.maxDistance=14;
+controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);
+key.position.set(8,10,5);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=0.2;key.shadow.camera.far=30;
+key.shadow.camera.left=-8;key.shadow.camera.right=8;
+key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
+key.shadow.bias=-0.00005;key.shadow.normalBias=0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-3,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-4));
+scene.add(new THREE.PointLight(0xffffff,3,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,20,12,64,0x30363d,0x1a1e28);
+grid.position.y=-1.8;root.add(grid);
+
+const bulbGrp=new THREE.Group();root.add(bulbGrp);
+const wireGrp=new THREE.Group();root.add(wireGrp);
+const powerRingGrp=new THREE.Group();root.add(powerRingGrp);
+const particleGrp=new THREE.Group();root.add(particleGrp);
+const labelGrp=new THREE.Group();root.add(labelGrp);
+
+let U=6,R=3,accWh=0;
+const timeFactor=3600;
+
+function disposeGroup(grp){
+  while(grp.children.length>0){
+    const ch=grp.children[0];
+    if(ch.geometry)ch.geometry.dispose();
+    if(ch.material){
+      if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+      else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}
+    }
+    grp.remove(ch);
+  }
+}
+
+const bulbGlow=new THREE.PointLight(0xffaa44,6,3);
+const bulbGlowAmb=new THREE.PointLight(0xff8844,2,5);
+bulbGlow.position.set(0,0.3,0);
+bulbGlowAmb.position.set(0,0.3,0);
+
+function buildBulb(){
+  disposeGroup(bulbGrp);
+  const glassGeom=new THREE.SphereGeometry(0.35,32,24);
+  const glassMat=new THREE.MeshPhysicalMaterial({color:0xffeecc,roughness:0.05,metalness:0,clearcoat:0.4,clearcoatRoughness:0.1,transparent:true,opacity:0.55,emissive:0x331100,emissiveIntensity:0.5});
+  const glass=new THREE.Mesh(glassGeom,glassMat);
+  glass.position.set(0,0.3,0);
+  bulbGrp.add(glass);
+  const baseGeom=new THREE.CylinderGeometry(0.12,0.15,0.4,16);
+  const baseMat=new THREE.MeshStandardMaterial({color:0x888899,roughness:0.3,metalness:0.9});
+  const base=new THREE.Mesh(baseGeom,baseMat);
+  base.position.set(0,-0.25,0);base.castShadow=true;
+  bulbGrp.add(base);
+  const threadGeom=new THREE.CylinderGeometry(0.08,0.09,0.2,12);
+  const thread=new THREE.Mesh(threadGeom,new THREE.MeshStandardMaterial({color:0x999aaa,roughness:0.4,metalness:0.95}));
+  thread.position.set(0,-0.55,0);thread.castShadow=true;
+  bulbGrp.add(thread);
+  const tipGeom=new THREE.CylinderGeometry(0.03,0.05,0.1,8);
+  const tip=new THREE.Mesh(tipGeom,new THREE.MeshStandardMaterial({color:0x666677,roughness:0.3,metalness:0.9}));
+  tip.position.set(0,-0.7,0);
+  bulbGrp.add(tip);
+  bulbGrp.add(bulbGlow);
+  bulbGrp.add(bulbGlowAmb);
+}
+
+function buildWires(){
+  disposeGroup(wireGrp);
+  const mat=new THREE.MeshStandardMaterial({color:0xcca866,roughness:0.3,metalness:0.9});
+  const r=0.04;
+  const makeWire=(x1,y1,z1,x2,y2,z2)=>{
+    const dx=x2-x1,dy=y2-y1,dz=z2-z1;
+    const len=Math.sqrt(dx*dx+dy*dy+dz*dz);
+    const geom=new THREE.CylinderGeometry(r,r,len,8);
+    const mesh=new THREE.Mesh(geom,mat);mesh.castShadow=true;
+    mesh.position.set((x1+x2)/2,(y1+y2)/2,(z1+z2)/2);
+    const dir=new THREE.Vector3(dx,dy,dz).normalize();
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir);
+    return mesh;
+  };
+  wireGrp.add(makeWire(-0.9,-0.7,0, -0.9,-1.5,0));
+  wireGrp.add(makeWire(-0.9,-1.5,0, 1.5,-1.5,0));
+  wireGrp.add(makeWire(1.5,-1.5,0, 1.5,-0.7,0));
+}
+
+function buildPowerRing(){
+  disposeGroup(powerRingGrp);
+  const ringGeom=new THREE.TorusGeometry(0.45,0.03,8,36);
+  const ringMat=new THREE.MeshBasicMaterial({color:0xffaa44,transparent:true,opacity:0.5,depthWrite:false});
+  const ring=new THREE.Mesh(ringGeom,ringMat);
+  ring.position.set(0,0.3,0);
+  powerRingGrp.add(ring);
+  const ring2=new THREE.Mesh(new THREE.TorusGeometry(0.5,0.02,8,36),
+    new THREE.MeshBasicMaterial({color:0xffcc66,transparent:true,opacity:0.3,depthWrite:false}));
+  ring2.position.copy(ring.position);
+  ring2.quaternion.setFromAxisAngle(new THREE.Vector3(1,0,0),Math.PI/2);
+  powerRingGrp.add(ring2);
+}
+
+function buildLabels(){
+  disposeGroup(labelGrp);
+  const makeLabel=(text,x,y,color,scaleW=0.7)=>{
+    const canvas=document.createElement('canvas');
+    canvas.width=128;canvas.height=36;
+    const ctx=canvas.getContext('2d');
+    ctx.fillStyle=color;ctx.font='bold 18px Inter,Microsoft YaHei';ctx.textAlign='center';
+    ctx.fillText(text,64,26);
+    const tex=new THREE.CanvasTexture(canvas);tex.minFilter=THREE.LinearFilter;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+    sp.scale.set(scaleW,0.23,1);sp.position.set(x,y,0.3);
+    return sp;
+  };
+  labelGrp.add(makeLabel('用电器',0,0.8,'#ffcc88',0.8));
+  labelGrp.add(makeLabel('电源',-0.9,-2,'#8899cc'));
+}
+
+const particles=[];
+const nParticles=40;
+const pGeom=new THREE.SphereGeometry(0.035,5,5);
+const pMat=new THREE.MeshStandardMaterial({color:0xff8844,roughness:0.1,metalness:0.3,emissive:0x331100,emissiveIntensity:1.5});
+
+function spawnParticles(){
+  disposeGroup(particleGrp);
+  particles.length=0;
+  for(let i=0;i<nParticles;i++){
+    const mesh=new THREE.Mesh(pGeom,pMat);
+    mesh.userData={arc:Math.random()*Math.PI*2,speed:0.5+Math.random()*0.5};
+    particleGrp.add(mesh);
+    particles.push(mesh);
+  }
+}
+
+const pathX=[-0.9,1.5,-0.9];
+const pathY=[-0.7,-1.5,-0.7];
+function getParticlePos(arc){
+  let d=(arc/(Math.PI*2))*3;
+  d=d%3;
+  const seg=Math.floor(d);
+  const t=d-seg;
+  const i0=seg,i1=(seg+1)%3;
+  const x=pathX[i0]+(pathX[i1]-pathX[i0])*t;
+  const y=pathY[i0]+(pathY[i1]-pathY[i0])*t;
+  return {x,y};
+}
+
+function updateParticles(dt){
+  const I=U/Math.max(R,0.01);
+  const speed=I*2.5;
+  for(const p of particles){
+    p.userData.arc+=dt*0.5*speed*p.userData.speed;
+    const pos=getParticlePos(p.userData.arc);
+    p.position.set(pos.x,pos.y,0);
+  }
+}
+
+function updateUI(){
+  const I=U/Math.max(R,0.01);
+  const P=U*I;
+  const P2=I*I*R;
+  const P3=U*U/Math.max(R,0.01);
+  document.getElementById('vU').textContent=U.toFixed(1)+' V';
+  document.getElementById('vR').textContent=R.toFixed(1)+' Ω';
+  document.getElementById('vI').textContent=I.toFixed(2)+' A';
+  document.getElementById('vP').textContent=P.toFixed(1)+' W';
+  const pMax=24*24/Math.min(R,0.5);
+  document.getElementById('barP').style.width=Math.min(100,(P/pMax)*100).toFixed(0)+'%';
+  document.getElementById('vW').textContent=accWh.toFixed(2)+' Wh';
+  document.getElementById('barW').style.width=Math.min(100,(accWh/10)*100).toFixed(0)+'%';
+  document.getElementById('uVal').textContent=U.toFixed(1);
+  document.getElementById('rVal').textContent=R.toFixed(1);
+  const glowIntensity=Math.min(8,P*0.5+0.5);
+  bulbGlow.intensity=glowIntensity;
+  bulbGlowAmb.intensity=glowIntensity*0.35;
+  const emissiveVal=Math.min(1.0,P*0.06);
+  if(bulbGrp.children.length>0){
+    const glass=bulbGrp.children[0];
+    if(glass.material&&glass.material.emissiveIntensity!==undefined){
+      glass.material.emissiveIntensity=0.5+emissiveVal*2;
+      glass.material.emissive=new THREE.Color().setHSL(0.12,0.9,0.05+emissiveVal*0.15);
+    }
+  }
+}
+
+function fullRebuild(){
+  accWh=0;
+  buildBulb();
+  buildWires();
+  buildPowerRing();
+  buildLabels();
+  spawnParticles();
+  updateUI();
+}
+
+document.getElementById('uSlider').addEventListener('input',function(){U=parseFloat(this.value);updateUI();});
+document.getElementById('rSlider').addEventListener('input',function(){R=parseFloat(this.value);updateUI();});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(2,2.5,5.5);controls.target.set(0,0,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  controls.update();
+  updateParticles(dt);
+  const I=U/Math.max(R,0.01);
+  const P=U*I;
+  accWh+=P*dt/timeFactor;
+  updateUI();
+  if(powerRingGrp.children.length>0){
+    powerRingGrp.children[0].rotation.z+=dt*3*(P/12);
+  }
+  renderer.render(scene,camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+</html>
