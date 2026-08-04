@@ -684,127 +684,56 @@
   .calc-btn.clr{background:rgba(232,64,58,.15);color:var(--danger)}
   .chip{display:inline-block;padding:4px 10px;margin:3px;border-radius:var(--r-pill);background:rgba(0,230,118,.14);color:var(--accent-2);font-size:13px}
 
-  /* ===== 文件共享面板 ===== */
-  .share-overlay{
-    position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;
+
+  /* ===== 云端标签 ===== */
+  .cloud-badge{
+    display:inline-flex;align-items:center;gap:3px;padding:2px 8px;
+    background:linear-gradient(135deg,rgba(0,188,212,.18),rgba(0,230,118,.08));
+    border:1px solid rgba(0,188,212,.25);border-radius:var(--r-pill);
+    font-size:11px;color:var(--accent-2);font-weight:500;
+  }
+  .cloud-badge svg{width:12px;height:12px}
+  .cloud-sync-indicator{
+    display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);
+    padding:4px 0;
+  }
+  .cloud-sync-indicator.ok{color:var(--ok)}
+  .cloud-sync-indicator.err{color:var(--danger)}
+  .topbar-sync-btn{
+    padding:8px 14px;font-size:12px;cursor:pointer;
+    border:none;font-weight:500;transition:all .2s;
+    border-radius:var(--r-pill);
+    background:rgba(255,255,255,.06);color:var(--muted);
+    border:1px solid var(--border);
+  }
+  .topbar-sync-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+  .topbar-sync-btn.active{color:var(--ok);border-color:rgba(0,230,118,.3)}
+  .token-overlay{
+    position:fixed;inset:0;z-index:500;display:none;align-items:center;justify-content:center;
     background:rgba(0,0,0,.5);backdrop-filter:blur(6px);
-    opacity:0;pointer-events:none;transition:opacity .3s;
   }
-  .share-overlay.show{opacity:1;pointer-events:auto}
-  .share-panel{
-    width:min(520px,92vw);max-height:80vh;
-    background:var(--glass-strong);border:1px solid var(--border-strong);border-radius:var(--r-lg);
-    padding:0;backdrop-filter:var(--glass-blur-strong);
-    -webkit-backdrop-filter:var(--glass-blur-strong);
-    box-shadow:var(--shadow-lg),var(--glass-edge),0 0 40px rgba(0,230,118,.12);
-    display:flex;flex-direction:column;overflow:hidden;
-    background-image:var(--glass-refraction);
+  .token-overlay.show{display:flex}
+  .token-panel{
+    width:min(420px,90vw);padding:24px;border-radius:var(--r-lg);
+    background:var(--glass-strong);border:1px solid var(--border-strong);
+    box-shadow:var(--shadow-lg);
   }
-  .share-panel-header{
-    display:flex;align-items:center;justify-content:space-between;
-    padding:20px 24px;border-bottom:1px solid var(--border);
-    font-size:17px;font-weight:600;flex-shrink:0;
+  .token-panel h3{margin:0 0 16px;font-size:16px}
+  .token-panel-input{
+    width:100%;box-sizing:border-box;padding:10px 14px;
+    background:rgba(255,255,255,.04);border:1px solid var(--border);
+    border-radius:var(--r-sm);color:var(--text);font-size:13px;
+    font-family:monospace;margin-bottom:12px;
   }
-  .share-panel-close{
-    width:32px;height:32px;border:none;border-radius:var(--r-sm);background:rgba(255,255,255,.06);
-    color:var(--muted);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;
-    transition:all .2s;
-  }
-  .share-panel-close:hover{background:rgba(232,64,58,.2);color:var(--danger)}
-  .share-panel-body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:18px}
-  .share-section-title{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
-  .share-token-wrap{display:flex;gap:8px}
-  .share-token-input{
-    flex:1;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid var(--border);
-    border-radius:var(--r-sm);color:var(--text);font-size:13px;font-family:monospace;transition:all .2s;
-  }
-  .share-token-input:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px rgba(0,230,118,.12)}
-  .share-dropzone{
-    border:2px dashed var(--border-strong);border-radius:var(--r-md);
-    padding:36px 20px;text-align:center;cursor:pointer;
-    transition:all .3s cubic-bezier(.4,0,.2,1);
-    background:rgba(255,255,255,.02);
-  }
-  .share-dropzone:hover,.share-dropzone.over{
-    border-color:var(--accent);background:rgba(0,230,118,.06);
-    transform:scale(1.01);box-shadow:var(--glow-accent);
-  }
-  .share-dropzone-icon svg{width:40px;height:40px;color:var(--accent-2)}
-  .share-dropzone-text{font-size:14px;margin-top:12px;color:var(--text);font-weight:500}
-  .share-dropzone-hint{color:var(--muted);font-size:11px;margin-top:4px}
-  .share-file-list{display:flex;flex-direction:column;gap:6px;max-height:260px;overflow-y:auto}
-  .share-file-item{
-    display:flex;align-items:center;gap:12px;padding:10px 14px;
-    background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:var(--r-sm);
-    transition:all .2s;
-  }
-  .share-file-item:hover{background:rgba(255,255,255,.06);border-color:var(--border-strong)}
-  .share-file-icon{font-size:20px;flex-shrink:0}
-  .share-file-name{flex:1;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .share-file-size{color:var(--muted);font-size:11px;flex-shrink:0}
-  .share-file-actions{display:flex;gap:4px;flex-shrink:0}
-  .share-file-btn{
-    padding:5px 10px;border:none;border-radius:var(--r-pill);font-size:11px;cursor:pointer;
-    color:var(--text);background:rgba(255,255,255,.08);transition:all .2s;
-  }
-  .share-file-btn:hover{background:rgba(0,230,118,.2);color:#fff}
-  .share-file-btn.del:hover{background:rgba(232,64,58,.2);color:var(--danger)}
-  .share-status{font-size:12px;padding:8px 12px;border-radius:var(--r-sm);text-align:center}
-  .share-status.ok{background:rgba(0,230,118,.1);color:var(--ok);border:1px solid rgba(0,230,118,.2)}
-  .share-status.err{background:rgba(232,64,58,.1);color:var(--danger);border:1px solid rgba(232,64,58,.2)}
-  .share-status.info{background:rgba(0,188,212,.08);color:var(--accent-2);border:1px solid rgba(0,188,212,.15)}
-  .share-upload-progress{width:100%;height:4px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-top:8px}
-  .share-upload-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent),var(--accent-2));border-radius:2px;transition:width .3s}
-  .share-topbar-btn{
-    padding:10px 20px;font-size:14px;cursor:pointer;
-    border:none;font-weight:500;transition:all .2s;display:inline-flex;align-items:center;justify-content:center;gap:6px;
-    border-radius:var(--r-pill);letter-spacing:.2px;
-    background:linear-gradient(135deg,rgba(0,188,212,.25),rgba(0,230,118,.1));
-    color:var(--accent-2);border:1px solid rgba(0,188,212,.3);
-    backdrop-filter:blur(10px);
-  }
-  .share-topbar-btn:hover{
-    transform:translateY(-1px);box-shadow:0 0 20px rgba(0,188,212,.3);
-    background:linear-gradient(135deg,rgba(0,188,212,.35),rgba(0,230,118,.18));
-    border-color:rgba(0,188,212,.5);
-  }
-  .share-topbar-btn:active{transform:translateY(0) scale(.96);transition:transform .2s cubic-bezier(.16,1,.3,1)}
+  .token-panel-input:focus{outline:none;border-color:var(--accent)}
+  .token-panel-actions{display:flex;gap:8px;justify-content:flex-end}
+
 
 </style>
 </head>
 <body>
 <canvas id="particles" class="particles-bg"></canvas>
 <div id="app"></div>
-<div id="shareOverlay" class="share-overlay">
-  <div class="share-panel">
-    <div class="share-panel-header">
-      <span>文件共享</span>
-      <button class="share-panel-close" onclick="closeSharePanel()">✕</button>
-    </div>
-    <div class="share-panel-body">
-      <div>
-        <div class="share-section-title">GitHub Token</div>
-        <div class="share-token-wrap">
-          <input type="password" id="shareTokenInput" class="share-token-input" placeholder="输入 GitHub Personal Access Token">
-          <button class="share-file-btn" onclick="toggleTokenVisibility()" id="toggleTokenBtn">👁 显示</button>
-        </div>
-        <button class="share-file-btn" onclick="saveShareToken()" style="margin-top:6px">💾 保存</button>
-      </div>
-      <div id="shareStatusMsg"></div>
-      <div class="share-dropzone" id="shareDropzone">
-        <div class="share-dropzone-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M8 8l4-4 4 4"/><path d="M20 16v2a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-2"/></svg></div>
-        <div class="share-dropzone-text">点击或拖拽文件到这里上传</div>
-        <div class="share-dropzone-hint">上传到 GitHub 仓库</div>
-        <input type="file" id="shareFileInput" multiple hidden>
-      </div>
-      <div id="shareUploadProgress" class="share-upload-progress" style="display:none"><div id="shareProgressBar" class="share-upload-progress-bar" style="width:0"></div></div>
-      <div id="shareProgressText" style="font-size:11px;color:var(--muted);text-align:center"></div>
-      <div>
-        <div class="share-section-title">云端文件</div>
-        <div id="shareFileList" class="share-file-list"></div>
-      </div>
-    </div>
-  </div>
 </div>
 
 <script>
@@ -1061,7 +990,9 @@ function thumbHtml(m){
     : IC_CUBE;
 }
 function tagsHtml(m){
-  return (m.tags||[]).slice(0,3).map(t=>{const c=tagColor(t);return `<span class="tag" style="background:${c.bg};color:${c.fg};box-shadow:0 0 12px ${c.glow}">${escapeHtml(t)}</span>`}).join('');
+  const tags=(m.tags||[]).slice(0,3).map(function(t){const c=tagColor(t);return '<span class="tag" style="background:'+c.bg+';color:'+c.fg+';box-shadow:0 0 12px '+c.glow+'">'+escapeHtml(t)+'</span>';}).join('');
+  if(m.cloud)tags+='<span class="cloud-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>云端</span>';
+  return tags;
 }
 function stackCard(m,i,models){
   const selected=state.selectedIds.has(m.id);
@@ -1280,7 +1211,7 @@ function renderList(models,tags,total,totalPages,all){
       <div class="topbar-spacer"></div>
       ${selectBarHtml}
       ${!inSelect?`<button class="topbar-btn btn-ghost" onclick="enterSelectMode()">批量删除</button>`:''}
-      <button class="topbar-btn btn-accent" onclick="goUpload()">${IC_UPLOAD} 上传</button><button class="share-topbar-btn" onclick="toggleSharePanel()" title="多设备文件共享"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg> 文件共享</button>
+      <button class="topbar-btn btn-accent" onclick="goUpload()">${IC_UPLOAD} 上传</button><button class="topbar-sync-btn" onclick="showTokenPanel()" title="云端同步设置"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="vertical-align:middle"><path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.2"/></svg> 同步</button>
 
     </header>
     <div class="content">
@@ -2265,7 +2196,7 @@ async function render(){
   }
   // ===== 3D 模型库 =====
   if(state.view==='viewer'){
-    const model=await dbGet(STORE_MODELS,state.currentModelId);
+    const model=isCloudId(state.currentModelId)?getCloudModel(state.currentModelId):await dbGet(STORE_MODELS,state.currentModelId);
     main.innerHTML=renderViewer(model);
     // 打开转场动画期间 iframe 保持 about:blank + visibility:hidden（不参与合成，卡顿主因）；
     // 动画结束（animationend）才加载模型内容并恢复毛玻璃/iframe/释放合成层
@@ -2288,7 +2219,9 @@ async function render(){
     return;
   }
   // list
-  const all=await getAllModels();
+  const localAll=await getAllModels();
+  // 合并本地模型与云端模型
+  const all=[...localAll,...cloudModels];
   const allTags=getAllTags(all);
   const filtered=filterModels(all,state.q,state.tag,state.favOnly);
   const total=filtered.length;
@@ -2489,22 +2422,44 @@ function onFilesPicked(fileList){
 function removeUploadFile(i){state.uploadFiles.splice(i,1);render();}
 async function doUpload(){
   if(!state.uploadFiles.length)return;
-  // 读取上传页标签输入，应用到本次所有文件
   const tagInput=document.getElementById('uploadTags');
   const tags=tagInput?parseTags(tagInput.value):[];
   state.uploadTags=tagInput?tagInput.value:'';
   let ok=0,fail=0;
+  const filesForCloud=state.uploadFiles.slice();
   for(const f of state.uploadFiles){
     try{await addModel(f,tags);ok++;}catch(e){console.error(e);fail++;}
   }
   state.uploadResult={ok:true,msg:`✓ 成功上传 ${ok} 个${fail?'，'+fail+' 个失败':''}`};
   state.uploadFiles=[];
+  // 同步上传到云端
+  if(getCloudToken()){
+    let cloudOk=0;
+    for(const f of filesForCloud){
+      try{
+        const buf=await f.arrayBuffer();
+        const uploaded=await uploadToCloud(f.name,buf);
+        if(uploaded)cloudOk++;
+      }catch(e){console.error('云端上传失败: '+f.name,e);}
+    }
+    if(cloudOk>0){
+      toast('已同步 '+cloudOk+' 个到云端','ok');
+      await rebuildCloudModels();
+    }
+  }
   toast(`成功上传 ${ok} 个模型`,'ok');
   render();
 }
 
 // ---------- 预览加载 ----------
 async function loadModelIntoIframe(id){
+  if(isCloudId(id)){
+    const cm=getCloudModel(id);
+    if(!cm)return;
+    const frame=document.getElementById('modelFrame');
+    if(frame)frame.src=cm.downloadUrl;
+    return;
+  }
   const r=await getModelBlob(id);
   if(!r)return;
   const url=URL.createObjectURL(r.blob);
@@ -2512,6 +2467,11 @@ async function loadModelIntoIframe(id){
   if(frame)frame.src=url;
 }
 async function openFull(id){
+  if(isCloudId(id)){
+    const cm=getCloudModel(id);
+    if(cm)window.open(cm.downloadUrl,'_blank');
+    return;
+  }
   const r=await getModelBlob(id);
   if(!r)return;
   const url=URL.createObjectURL(r.blob);
@@ -2528,6 +2488,15 @@ async function saveModelEdit(id){
 }
 async function deleteCurrentModel(id){
   if(!confirm('确认删除此模型？此操作不可恢复。'))return;
+  if(isCloudId(id)){
+    const cm=getCloudModel(id);
+    if(cm){
+      const ok=await deleteFromCloud(cm.filename,cm.sha);
+      if(ok){cloudModels=cloudModels.filter(function(m){return m.id!==id;});toast('已从云端删除','ok');}
+      else toast('云端删除失败','err');
+    }
+    goList();return;
+  }
   await dbDelete(STORE_MODELS,id);
   toast('已删除','ok');
   goList();
@@ -2727,179 +2696,151 @@ function initScrollGradientBlur(){
 }
 
 
-// ========== 多设备文件共享（GitHub API） ==========
-const SHARE_REPO='ylh20060921/physics-model-sharing';
-const SHARE_API='https://api.github.com/repos/'+SHARE_REPO+'/contents/uploads';
-const SHARE_RAW='https://raw.githubusercontent.com/'+SHARE_REPO+'/main/uploads/';
-let shareUploadFiles=[];
-let shareKnownFiles=new Set();
-let sharePollTimer=null;
 
-function getShareToken(){return localStorage.getItem('share_github_token')||'';}
-function setShareToken(t){localStorage.setItem('share_github_token',t);}
-function toggleSharePanel(){
-  const el=document.getElementById('shareOverlay');
-  if(!el)return;
-  if(el.classList.contains('show')){closeSharePanel();return;}
-  el.classList.add('show');
-  const inp=document.getElementById('shareTokenInput');
-  if(inp)inp.value=getShareToken();
-  refreshShareFiles();
-  bindShareUpload();
+// ========== 云端同步（GitHub API） ==========
+const CLOUD_REPO='ylh20060921/physics-model-sharing';
+const CLOUD_API='https://api.github.com/repos/'+CLOUD_REPO+'/contents/uploads';
+const CLOUD_RAW='https://raw.githubusercontent.com/'+CLOUD_REPO+'/main/uploads/';
+let cloudModels=[];
+let cloudPollTimer=null;
+let cloudKnownSHAs=new Set();
+
+function getCloudToken(){return localStorage.getItem('share_github_token')||'';}
+function setCloudToken(t){localStorage.setItem('share_github_token',t);}
+function isCloudId(id){return typeof id==='string'&&id.startsWith('cloud_');}
+function getCloudModel(id){return cloudModels.find(m=>m.id===id)||null;}
+
+function showTokenPanel(){
+  const old=document.getElementById('tokenOverlay');
+  if(old)old.remove();
+  const ov=document.createElement('div');
+  ov.id='tokenOverlay';
+  ov.className='token-overlay show';
+  ov.innerHTML='<div class="token-panel">'+
+    '<h3>云端同步设置</h3>'+
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 12px">配置 GitHub Token 后，上传的模型将自动同步到云端，其他设备可实时查看。</p>'+
+    '<input type="password" id="tokenPanelInput" class="token-panel-input" placeholder="GitHub Personal Access Token" value="'+escapeHtml(getCloudToken())+'">'+
+    '<div class="token-panel-actions">'+
+      '<button class="topbar-btn btn-ghost" onclick="document.getElementById(\'tokenOverlay\').remove()">取消</button>'+
+      '<button class="topbar-btn btn-accent" onclick="saveCloudToken()">保存并启用</button>'+
+    '</div></div>';
+  document.body.appendChild(ov);
+  ov.addEventListener('click',function(e){if(e.target===ov)ov.remove();});
 }
-function closeSharePanel(){
-  const el=document.getElementById('shareOverlay');
-  if(el)el.classList.remove('show');
-}
-function toggleTokenVisibility(){
-  const inp=document.getElementById('shareTokenInput');
-  const btn=document.getElementById('toggleTokenBtn');
-  if(!inp||!btn)return;
-  if(inp.type==='password'){inp.type='text';btn.textContent='🙈 隐藏';}
-  else{inp.type='password';btn.textContent='👁 显示';}
-}
-function saveShareToken(){
-  const inp=document.getElementById('shareTokenInput');
+
+function saveCloudToken(){
+  const inp=document.getElementById('tokenPanelInput');
   if(!inp)return;
   const v=inp.value.trim();
-  setShareToken(v);
-  const msg=document.getElementById('shareStatusMsg');
-  if(msg)msg.innerHTML=v?'<div class="share-status ok">Token 已保存到本地</div>':'<div class="share-status err">请输入 Token</div>';
-  if(v)initSharePolling();
+  setCloudToken(v);
+  document.getElementById('tokenOverlay')?.remove();
+  if(v){initCloudSync();toast('云端同步已启用','ok');}
+  else{stopCloudPolling();cloudModels=[];toast('云端同步已关闭','');render();}
 }
-async function refreshShareFiles(){
-  const list=document.getElementById('shareFileList');
-  if(!list)return;
-  list.innerHTML='<div class="share-status info">加载中…</div>';
+
+async function fetchCloudModels(){
   try{
-    const resp=await fetch(SHARE_API,{headers:getShareToken()?{Authorization:'Bearer '+getShareToken()}:{}});
-    if(!resp.ok){
-      if(resp.status===401||resp.status===403)list.innerHTML='<div class="share-status err">Token 无效或未配置，请先保存 Token</div>';
-      else if(resp.status===404)list.innerHTML='<div class="share-status info">仓库暂无文件，上传第一个文件吧</div>';
-      else list.innerHTML='<div class="share-status err">加载失败：'+resp.status+' '+resp.statusText+'</div>';
-      return;
-    }
-    const files=await resp.json();
-    if(!Array.isArray(files)){list.innerHTML='<div class="share-status info">仓库暂无文件</div>';shareKnownFiles=new Set();return;}
-    if(files.length===0){list.innerHTML='<div class="share-status info">仓库暂无文件，上传第一个文件吧</div>';shareKnownFiles=new Set();return;}
-    shareKnownFiles=new Set(files.map(f=>f.name+'|'+f.sha));
-    list.innerHTML=files.map(f=>{
-      const name=f.name||'';
-      const size=f.size?fmtSize(f.size):'';
-      const rawUrl=SHARE_RAW+encodeURIComponent(name);
-      const ext=(name.split('.').pop()||'').toLowerCase();
-      const ico={'jpg':'🖼','jpeg':'🖼','png':'🖼','gif':'🖼','webp':'🖼','svg':'🖼','bmp':'🖼',
-        'pdf':'📄','zip':'🗜','rar':'🗜','7z':'🗜','tar':'🗜','gz':'🗜',
-        'mp4':'🎬','webm':'🎬','mov':'🎬','avi':'🎬',
-        'mp3':'🎵','wav':'🎵','flac':'🎵','m4a':'🎵',
-        'html':'🌐','htm':'🌐','doc':'📝','docx':'📝','txt':'📝','md':'📝',
-        'xls':'📊','xlsx':'📊','csv':'📊','ppt':'📽','pptx':'📽',
-        'js':'💻','py':'💻','json':'💻','css':'💻'}[ext]||'📦';
-      return `<div class="share-file-item">
-        <span class="share-file-icon">${ico}</span>
-        <span class="share-file-name" title="${escapeHtml(name)}">${escapeHtml(name)}</span>
-        <span class="share-file-size">${size}</span>
-        <div class="share-file-actions">
-          <button class="share-file-btn" onclick="window.open('${rawUrl}','_blank')">查看</button>
-          <a class="share-file-btn" href="${rawUrl}" download="${escapeHtml(name)}" style="text-decoration:none">下载</a>
-          <button class="share-file-btn del" onclick="deleteShareFile('${escapeHtml(name).replace(/'/g,"\\'")}','${f.sha||''}')">删除</button>
-        </div>
-      </div>`;
-    }).join('');
-  }catch(e){
-    list.innerHTML='<div class="share-status err">网络错误：'+escapeHtml(e.message||String(e))+'</div>';
-  }
-}
-async function fetchShareFileList(){
-  try{
-    const token=getShareToken();
+    const token=getCloudToken();
     if(!token)return null;
-    const resp=await fetch(SHARE_API,{headers:{Authorization:'Bearer '+token}});
+    const resp=await fetch(CLOUD_API,{headers:{Authorization:'Bearer '+token}});
     if(!resp.ok)return null;
     const files=await resp.json();
     if(!Array.isArray(files))return null;
     return files;
   }catch(e){return null;}
 }
-async function autoPollShareFiles(){
-  const files=await fetchShareFileList();
-  if(!files)return;
-  const currentSet=new Set(files.map(f=>f.name+'|'+f.sha));
-  const hasNew=[...currentSet].some(k=>!shareKnownFiles.has(k));
-  if(hasNew&&shareKnownFiles.size>0){
-    toast('发现新文件','ok');
-  }
-  shareKnownFiles=currentSet;
-  const list=document.getElementById('shareFileList');
-  if(!list||!document.getElementById('shareOverlay').classList.contains('show'))return;
-  refreshShareFiles();
-}
-function initSharePolling(){
-  if(sharePollTimer){clearInterval(sharePollTimer);sharePollTimer=null;}
-  const token=getShareToken();
-  if(!token)return;
-  fetchShareFileList().then(files=>{
-    if(files)shareKnownFiles=new Set(files.map(f=>f.name+'|'+f.sha));
+
+function buildCloudModels(files){
+  return files.filter(function(f){
+    const n=f.name.toLowerCase();
+    return n.endsWith('.html')||n.endsWith('.htm');
+  }).map(function(f){
+    return {
+      id:'cloud_'+f.sha.substring(0,12),
+      filename:f.name,originalName:f.name,
+      size:f.size||0,note:'',tags:['云端'],
+      title:f.name.replace(/\.(html|htm)$/i,''),thumb:'',fav:false,
+      cloud:true,sha:f.sha,
+      downloadUrl:CLOUD_RAW+encodeURIComponent(f.name),
+      createdAt:f.name.match(/(\d{8,})/)?new Date(parseInt(f.name.match(/(\d{8,})/)[1].substring(0,13))).getTime():null
+    };
   });
-  sharePollTimer=setInterval(autoPollShareFiles,30000);
 }
-async function deleteShareFile(filename,sha){
-  if(!confirm('确认从云端删除 '+filename+'？'))return;
-  const token=getShareToken();
-  if(!token){toast('请先配置 Token','err');return;}
+
+async function uploadToCloud(filename,arrayBuffer){
+  const token=getCloudToken();
+  if(!token)return false;
   try{
-    const resp=await fetch(SHARE_API+'/'+encodeURIComponent(filename),{
+    const bytes=new Uint8Array(arrayBuffer);
+    var b64='';
+    for(var i=0;i<bytes.length;i+=4096){
+      b64+=String.fromCharCode.apply(null,Array.prototype.slice.call(bytes,i,Math.min(i+4096,bytes.length)));
+    }
+    b64=btoa(b64);
+    const resp=await fetch(CLOUD_API+'/'+encodeURIComponent(filename),{
+      method:'PUT',
+      headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
+      body:JSON.stringify({message:'Upload '+filename,content:b64})
+    });
+    if(resp.ok||resp.status===201){
+      const data=await resp.json();
+      if(data.content&&data.content.sha)cloudKnownSHAs.add(data.content.sha);
+      return true;
+    }
+    return false;
+  }catch(e){console.error('云端上传失败',e);return false;}
+}
+
+async function deleteFromCloud(filename,sha){
+  const token=getCloudToken();
+  if(!token)return false;
+  try{
+    const resp=await fetch(CLOUD_API+'/'+encodeURIComponent(filename),{
       method:'DELETE',
       headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
       body:JSON.stringify({message:'Delete '+filename,sha:sha})
     });
-    if(resp.ok){toast('已删除','ok');refreshShareFiles();}
-    else{const e=await resp.json().catch(()=>({}));toast('删除失败：'+(e.message||resp.status),'err');}
-  }catch(e){toast('网络错误','err');}
+    return resp.ok;
+  }catch(e){return false;}
 }
-function bindShareUpload(){
-  const drop=document.getElementById('shareDropzone');
-  const inp=document.getElementById('shareFileInput');
-  if(!drop||!inp)return;
-  drop.onclick=function(e){if(e.target===drop||e.target.closest('.share-dropzone-icon,.share-dropzone-text,.share-dropzone-hint'))inp.click();};
-  inp.onchange=function(){handleShareFiles(inp.files);inp.value='';};
-  drop.addEventListener('dragenter',e=>{e.preventDefault();drop.classList.add('over');});
-  drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
-  drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
-  drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');handleShareFiles(e.dataTransfer.files);});
-}
-async function handleShareFiles(fileList){
-  const token=getShareToken();
-  if(!token){const msg=document.getElementById('shareStatusMsg');if(msg)msg.innerHTML='<div class="share-status err">请先配置并保存 GitHub Token</div>';return;}
-  const msg=document.getElementById('shareStatusMsg');if(msg)msg.innerHTML='';
-  const progBar=document.getElementById('shareUploadProgress');
-  const progText=document.getElementById('shareProgressText');
-  const bar=document.getElementById('shareProgressBar');
-  let ok=0,fail=0;
-  const files=Array.from(fileList);
-  for(let i=0;i<files.length;i++){
-    const f=files[i];
-    if(progBar){progBar.style.display='block';bar.style.width=Math.round((i/files.length)*100)+'%';progText.textContent='上传 '+f.name+' ('+(i+1)+'/'+files.length+')…';}
-    try{
-      const buf=await f.arrayBuffer();
-      const b64=btoa(String.fromCharCode(...new Uint8Array(buf)));
-      const resp=await fetch(SHARE_API+'/'+encodeURIComponent(f.name),{
-        method:'PUT',
-        headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},
-        body:JSON.stringify({message:'Upload '+f.name,content:b64})
-      });
-      if(resp.ok||resp.status===201)ok++;
-      else fail++;
-    }catch(e){console.error(e);fail++;}
+
+async function rebuildCloudModels(){
+  const files=await fetchCloudModels();
+  if(files){
+    cloudModels=buildCloudModels(files);
+    cloudKnownSHAs=new Set(files.map(function(f){return f.sha;}));
   }
-  if(progBar){progBar.style.display='none';}
-  if(msg)msg.innerHTML='<div class="share-status '+(fail?'err':'ok')+'">上传完成：成功 '+ok+' 个'+(fail?'，失败 '+fail+' 个':'')+'</div>';
-  refreshShareFiles();
 }
 
-// ========== 多设备文件共享 END ==========
+async function autoPollCloud(){
+  const files=await fetchCloudModels();
+  if(!files)return;
+  const newSHAs=new Set(files.map(function(f){return f.sha;}));
+  let hasNew=false;
+  newSHAs.forEach(function(k){if(!cloudKnownSHAs.has(k))hasNew=true;});
+  if(hasNew&&cloudKnownSHAs.size>0){
+    cloudModels=buildCloudModels(files);
+    cloudKnownSHAs=newSHAs;
+    toast('发现新的云端模型','ok');
+    render();
+    return;
+  }
+  cloudKnownSHAs=newSHAs;
+}
 
-// ---------- 启动 ----------
+function initCloudSync(){
+  const token=getCloudToken();
+  if(!token)return;
+  stopCloudPolling();
+  rebuildCloudModels().then(function(){render();});
+  cloudPollTimer=setInterval(autoPollCloud,30000);
+}
+
+function stopCloudPolling(){
+  if(cloudPollTimer){clearInterval(cloudPollTimer);cloudPollTimer=null;}
+}
+
+// ========== 云端同步 END ========== ---------- 启动 ----------
 async function start(){
   try{
     await openDB();
@@ -2909,7 +2850,7 @@ async function start(){
     initScrollGradientBlur();
     initLightTracking();
     initShortcuts();
-    initSharePolling();
+    initCloudSync();
   }catch(e){
     document.getElementById('app').innerHTML=`<div class="empty"><div class="empty-icon">${IC_WARN}</div><h2>启动失败</h2><p>${escapeHtml(e.message||String(e))}</p><p style="color:var(--muted)">请确认浏览器支持 IndexedDB</p></div>`;
     console.error('启动失败',e);
