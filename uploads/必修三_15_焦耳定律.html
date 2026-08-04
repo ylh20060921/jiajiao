@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>焦耳定律 Q=I²Rt — 3D交互模型</title>
+<style>
+:root {
+  --bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;
+  --text-dim:#8b949e;--accent-blue:#58a6ff;--accent-red:#f85149;
+  --accent-gold:#d2991d;--accent-orange:#ff8c42;--border:rgba(48,54,61,0.8);
+  --slider-track:#30363d;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+
+#top-panel{
+  position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:10px 22px;
+  display:flex;gap:16px;align-items:center;flex-wrap:wrap;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+#top-panel .item{text-align:center}
+#top-panel .item .lbl{font-size:10px;color:var(--text-dim);letter-spacing:0.4px}
+#top-panel .item .val{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:700;margin-top:2px}
+#top-panel .item .val.gold{color:var(--accent-gold)}
+#top-panel .item .val.orange{color:var(--accent-orange)}
+#top-panel .item .val.red{color:var(--accent-red)}
+#top-panel .item .val.blue{color:var(--accent-blue)}
+#top-panel .item .bar-wrap{width:60px;height:6px;background:var(--slider-track);border-radius:3px;margin-top:3px;overflow:hidden}
+#top-panel .item .bar-fill{height:100%;border-radius:3px;transition:width 0.15s}
+#top-panel .item .bar-fill.q{background:var(--accent-orange)}
+#top-panel .item .bar-fill.pq{background:var(--accent-red)}
+
+#controls{
+  position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;
+  display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:center;
+  background:var(--panel-bg);backdrop-filter:blur(20px) saturate(1.6);
+  border:1px solid var(--border);border-radius:14px;padding:12px 20px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.45),inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.slider-grp{display:flex;flex-direction:column;align-items:center;gap:3px;min-width:80px}
+.slider-grp label{font-size:10px;font-weight:600;color:var(--text-dim)}
+.slider-grp .val{font-size:10px;color:var(--text);font-family:'JetBrains Mono',monospace}
+.slider-grp input[type=range]{
+  -webkit-appearance:none;width:100%;height:5px;border-radius:3px;outline:none;cursor:pointer;border:none;background:var(--slider-track)
+}
+.slider-grp input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:18px;height:18px;border-radius:50%;cursor:pointer;
+  background:var(--accent-orange);border:2px solid #fff;box-shadow:0 0 12px rgba(255,140,66,0.5)
+}
+#hint{position:fixed;bottom:108px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+#formula-label{
+  position:fixed;top:100px;left:50%;transform:translateX(-50%);z-index:9;
+  font-family:'JetBrains Mono',monospace;font-size:15px;font-weight:700;
+  color:var(--accent-orange);text-shadow:0 0 20px rgba(255,140,66,0.4);pointer-events:none;
+}
+@media(max-width:900px){#top-panel{gap:8px;padding:8px 12px}#top-panel .item .val{font-size:12px}#controls{gap:8px;padding:8px 12px}}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="formula-label">Q = I² · R · t</div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">电流 I</div><div class="val blue" id="vI">2.0 A</div></div>
+  <div class="item"><div class="lbl">电阻 R</div><div class="val red" id="vR">4.0 Ω</div></div>
+  <div class="item"><div class="lbl">发热功率</div><div class="val gold" id="vPq">16.0 W</div>
+    <div class="bar-wrap"><div class="bar-fill pq" id="barPq" style="width:50%"></div></div>
+  </div>
+  <div class="item"><div class="lbl">累计热量 Q</div><div class="val orange" id="vQ">0.0 J</div>
+    <div class="bar-wrap"><div class="bar-fill q" id="barQ" style="width:0%"></div></div>
+  </div>
+</div>
+<div id="controls">
+  <div class="slider-grp"><label>电流 I (A)</label><input type="range" id="iSlider" min="0.5" max="6" value="2" step="0.1"><span class="val" id="iVal">2.0</span></div>
+  <div class="slider-grp"><label>电阻 R (Ω)</label><input type="range" id="rSlider" min="1" max="15" value="4" step="0.1"><span class="val" id="rVal">4.0</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R 重置视角</div>
+<script type="importmap">
+{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}
+</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);
+container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);
+scene.fog=new THREE.Fog(0x0d1117,8,30);
+
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(1.5,1.8,6);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0.2,0);
+controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=2.5;controls.maxDistance=12;
+controls.maxPolarAngle=Math.PI*0.75;
+controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);
+key.position.set(8,10,5);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);
+key.shadow.camera.near=0.2;key.shadow.camera.far=30;
+key.shadow.camera.left=-8;key.shadow.camera.right=8;
+key.shadow.camera.top=8;key.shadow.camera.bottom=-8;
+key.shadow.bias=-0.00005;key.shadow.normalBias=0.02;
+scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-3,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-4));
+scene.add(new THREE.PointLight(0xffffff,3,8).position.set(0,4,2));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,20,12,64,0x30363d,0x1a1e28);
+grid.position.y=-1.8;root.add(grid);
+
+const coilGrp=new THREE.Group();root.add(coilGrp);
+const standGrp=new THREE.Group();root.add(standGrp);
+const particleGrp=new THREE.Group();root.add(particleGrp);
+const glowLight=new THREE.PointLight(0xff4400,0.5,3);
+
+let I=2,R=4,accQ=0;
+const nThermalParticles=50;
+let coilMaterial=null;
+let coilMeshes=[];
+
+function disposeGroup(grp){
+  while(grp.children.length>0){
+    const ch=grp.children[0];
+    if(ch.geometry)ch.geometry.dispose();
+    if(ch.material){
+      if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});
+      else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}
+    }
+    grp.remove(ch);
+  }
+}
+
+function buildStand(){
+  disposeGroup(standGrp);
+  const baseGeom=new THREE.BoxGeometry(1.6,0.1,1.2);
+  const baseMat=new THREE.MeshStandardMaterial({color:0x444455,roughness:0.4,metalness:0.3});
+  const base=new THREE.Mesh(baseGeom,baseMat);base.position.set(0,-0.9,0);base.castShadow=true;base.receiveShadow=true;
+  standGrp.add(base);
+  const legL=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.2,0.08),new THREE.MeshStandardMaterial({color:0x555566,roughness:0.3,metalness:0.5}));
+  legL.position.set(-0.5,-0.3,0);legL.castShadow=true;standGrp.add(legL);
+  const legR=new THREE.Mesh(new THREE.BoxGeometry(0.08,1.2,0.08),new THREE.MeshStandardMaterial({color:0x555566,roughness:0.3,metalness:0.5}));
+  legR.position.set(0.5,-0.3,0);legR.castShadow=true;standGrp.add(legR);
+}
+
+function buildCoil(){
+  disposeGroup(coilGrp);
+  coilMeshes=[];
+  const turns=7;
+  const coilRadius=0.5;
+  const coilLength=2.5;
+  const wireR=0.06;
+  const xStart=-coilLength/2;
+  const xStep=coilLength/(turns-1);
+  coilMaterial=new THREE.MeshStandardMaterial({color:0xcc7733,roughness:0.3,metalness:0.85,emissive:0x000000,emissiveIntensity:0});
+  for(let i=0;i<turns;i++){
+    const x=xStart+i*xStep;
+    const torusGeom=new THREE.TorusGeometry(coilRadius,wireR,8,24);
+    const ring=new THREE.Mesh(torusGeom,coilMaterial);
+    ring.position.set(x,0,0);
+    ring.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0),Math.PI/2);
+    ring.castShadow=true;
+    coilGrp.add(ring);
+    coilMeshes.push(ring);
+  }
+  coilGrp.add(glowLight);
+  glowLight.position.set(0,0,0);
+}
+
+const thermalParticles=[];
+const tpGeom=new THREE.SphereGeometry(0.025,5,5);
+const tpMat=new THREE.MeshBasicMaterial({color:0xff6633,transparent:true,opacity:0.7,depthWrite:false});
+
+function spawnThermalParticles(){
+  disposeGroup(particleGrp);
+  thermalParticles.length=0;
+  for(let i=0;i<nThermalParticles;i++){
+    const mesh=new THREE.Mesh(tpGeom,tpMat);
+    mesh.userData={life:Math.random(),riseSpeed:0.3+Math.random()*0.7,driftX:Math.random()*0.5-0.25,driftZ:Math.random()*0.5-0.25};
+    const ang=Math.random()*Math.PI*2;
+    mesh.position.set(Math.random()*2.5-1.25,Math.random()*0.6-0.3,Math.cos(ang)*0.5);
+    particleGrp.add(mesh);
+    thermalParticles.push(mesh);
+  }
+}
+
+function updateThermalParticles(dt,heatFactor){
+  for(const p of thermalParticles){
+    p.userData.life+=dt*heatFactor*p.userData.riseSpeed;
+    if(p.userData.life>1){p.userData.life=0;const ang=Math.random()*Math.PI*2;p.position.set(Math.random()*2.5-1.25,-0.3,Math.cos(ang)*0.5);}
+    p.position.y=-0.3+p.userData.life*1.8;
+    p.position.x+=p.userData.driftX*dt;
+    p.position.z+=p.userData.driftZ*dt;
+    const upwardFrac=Math.min(1,p.userData.life*3);
+    p.material.opacity=0.7*(1-p.userData.life)*upwardFrac;
+  }
+}
+
+function updateCoilColor(power){
+  const maxPower=36*15;
+  const frac=Math.min(1,power/maxPower*2.5);
+  const hue=0.08-frac*0.08;
+  const sat=0.85;
+  const light=0.25+frac*0.4;
+  const col=new THREE.Color().setHSL(hue,sat,light);
+  if(coilMaterial){
+    coilMaterial.color.copy(col);
+    coilMaterial.emissive=new THREE.Color().setHSL(0.08,0.9,frac*0.5);
+    coilMaterial.emissiveIntensity=frac*1.5;
+  }
+  glowLight.intensity=Math.min(5,power*0.12+0.1);
+  glowLight.color=new THREE.Color().setHSL(0.08,0.9,0.3+frac*0.5);
+}
+
+function updateUI(power){
+  document.getElementById('vI').textContent=I.toFixed(1)+' A';
+  document.getElementById('vR').textContent=R.toFixed(1)+' Ω';
+  document.getElementById('vPq').textContent=power.toFixed(1)+' W';
+  const pqMax=36*15;
+  document.getElementById('barPq').style.width=Math.min(100,(power/pqMax)*100).toFixed(0)+'%';
+  document.getElementById('vQ').textContent=accQ.toFixed(1)+' J';
+  document.getElementById('barQ').style.width=Math.min(100,(accQ/500)*100).toFixed(0)+'%';
+  document.getElementById('iVal').textContent=I.toFixed(1);
+  document.getElementById('rVal').textContent=R.toFixed(1);
+}
+
+function fullRebuild(){
+  accQ=0;
+  buildStand();
+  buildCoil();
+  spawnThermalParticles();
+  const power=I*I*R;
+  updateUI(power);
+  updateCoilColor(power);
+}
+
+document.getElementById('iSlider').addEventListener('input',function(){I=parseFloat(this.value);});
+document.getElementById('rSlider').addEventListener('input',function(){R=parseFloat(this.value);});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(1.5,1.8,6);controls.target.set(0,0.2,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);
+  controls.update();
+  const power=I*I*R;
+  accQ+=power*dt;
+  updateUI(power);
+  updateCoilColor(power);
+  updateThermalParticles(dt,Math.min(3,power*0.1));
+  renderer.render(scene,camera);
+}
+fullRebuild();
+requestAnimationFrame(animate);
+</script>
+</html>
