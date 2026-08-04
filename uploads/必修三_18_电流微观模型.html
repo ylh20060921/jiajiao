@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>电流微观模型 I=neSv — 3D交互</title>
+<style>
+:root{--bg:#0d1117;--panel-bg:rgba(22,27,34,0.94);--text:#e6edf3;--text-dim:#8b949e;--accent-blue:#58a6ff;--accent-gold:#d2991d;--accent-red:#f85149;--accent-green:#3fb950;--border:rgba(48,54,61,0.8);--slider-track:#30363d;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:'Inter','Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;overflow:hidden;height:100vh;user-select:none;color:var(--text)}
+#c{position:fixed;inset:0;z-index:0}canvas{display:block}
+#top-panel{position:fixed;top:16px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:10px 20px;display:flex;gap:16px;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.item{text-align:center}.item .lbl{font-size:10px;color:var(--text-dim)}.item .val{font-family:'JetBrains Mono',monospace;font-size:13px;font-weight:700;margin-top:2px}
+.val.blue{color:var(--accent-blue)}.val.gold{color:var(--accent-gold)}.val.red{color:var(--accent-red)}.val.green{color:var(--accent-green)}
+#controls{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:10;background:var(--panel-bg);backdrop-filter:blur(20px);border:1px solid var(--border);border-radius:14px;padding:12px 20px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center;align-items:center;box-shadow:0 8px 32px rgba(0,0,0,0.45)}
+.slider-group{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim)}
+.slider-group input[type=range]{-webkit-appearance:none;width:100px;height:4px;background:var(--slider-track);border-radius:2px;outline:none}
+.slider-group input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent-gold);border-radius:50%;cursor:pointer}
+#formula-display{position:fixed;top:90px;left:50%;transform:translateX(-50%);z-index:9;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--accent-gold);background:var(--panel-bg);padding:4px 14px;border-radius:8px;border:1px solid var(--border)}
+#hint{position:fixed;bottom:120px;left:50%;transform:translateX(-50%);z-index:8;font-size:10.5px;color:var(--text-dim);pointer-events:none;opacity:0.5}
+</style>
+</head>
+<body>
+<div id="c"></div>
+<div id="top-panel">
+  <div class="item"><div class="lbl">自由电子密度 n</div><div class="val blue" id="vN">8.5×10²⁸ m⁻³</div></div>
+  <div class="item"><div class="lbl">截面积 S</div><div class="val gold" id="vS">1.00 mm²</div></div>
+  <div class="item"><div class="lbl">漂移速度 v</div><div class="val red" id="vV">0.50 mm/s</div></div>
+  <div class="item"><div class="lbl">电流 I=neSv</div><div class="val green" id="vI">0.68 A</div></div>
+</div>
+<div id="formula-display">I = n · e · S · v</div>
+<div id="controls">
+  <div class="slider-group"><span>n</span><input type="range" id="slN" min="1" max="10" step="0.5" value="8.5"><span>×10²⁸</span></div>
+  <div class="slider-group"><span>S</span><input type="range" id="slS" min="0.2" max="3" step="0.1" value="1.0"><span>mm²</span></div>
+  <div class="slider-group"><span>v</span><input type="range" id="slV" min="0.1" max="2" step="0.05" value="0.5"><span>mm/s</span></div>
+</div>
+<div id="hint">拖拽旋转 · 滚轮缩放 · 右键平移 · R重置视角 · 电子定向漂移形成电流</div>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
+</body>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const container=document.getElementById('c');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.2;
+renderer.setClearColor(0x0d1117);container.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x0d1117);scene.fog=new THREE.Fog(0x0d1117,8,30);
+const camera=new THREE.PerspectiveCamera(50,window.innerWidth/window.innerHeight,0.5,20);
+camera.position.set(2.5,2.5,6);camera.lookAt(0,0,0);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.target.set(0,0,0);controls.enableDamping=true;controls.dampingFactor=0.08;
+controls.minDistance=2;controls.maxDistance=12;controls.maxPolarAngle=Math.PI*0.75;controls.update();
+
+scene.add(new THREE.AmbientLight(0x404060,1.8));
+const key=new THREE.DirectionalLight(0xffffff,4.5);key.position.set(6,8,4);key.castShadow=true;
+key.shadow.mapSize.set(2048,2048);key.shadow.camera.near=0.2;key.shadow.camera.far=20;
+key.shadow.camera.left=-6;key.shadow.camera.right=6;key.shadow.camera.top=6;key.shadow.camera.bottom=-6;key.shadow.bias=-0.00005;scene.add(key);
+scene.add(new THREE.DirectionalLight(0x8899cc,1.8).position.set(-4,3,-2));
+scene.add(new THREE.DirectionalLight(0xffffff,2.0).position.set(0,2,-6));
+scene.add(new THREE.PointLight(0xffffff,2.5,10).position.set(0,5,3));
+
+const root=new THREE.Group();scene.add(root);
+const grid=new THREE.PolarGridHelper(4,16,10,48,0x30363d,0x1a1e28);grid.position.y=-2;root.add(grid);
+const wireGrp=new THREE.Group();root.add(wireGrp);
+const electronGrp=new THREE.Group();root.add(electronGrp);
+const annotGrp=new THREE.Group();root.add(annotGrp);
+
+let nVal=8.5,Sval=1.0,vVal=0.5,t=0;
+const e=1.602e-19;const wireLen=3.5;
+
+function disposeGroup(grp){while(grp.children.length>0){const ch=grp.children[0];if(ch.geometry)ch.geometry.dispose();if(ch.material){if(Array.isArray(ch.material))ch.material.forEach(m=>{if(m.map)m.map.dispose();m.dispose();});else{if(ch.material.map)ch.material.map.dispose();ch.material.dispose();}}grp.remove(ch);}}
+
+function addText(text,x,y,z,w,h,color){
+  const c=document.createElement('canvas');c.width=256;c.height=40;
+  const ctx=c.getContext('2d');ctx.fillStyle=color;ctx.font='bold 20px Inter';ctx.textAlign='center';ctx.fillText(text,128,28);
+  const tex=new THREE.CanvasTexture(c);tex.minFilter=THREE.LinearFilter;
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));
+  sp.scale.set(w,h,1);sp.position.set(x,y,z);return sp;
+}
+
+function buildWire(){
+  disposeGroup(wireGrp);
+  const r=Math.sqrt(Sval/Math.PI)*0.001*1000;
+  const R=Math.max(0.08,Math.min(r*0.5,0.5));
+  const bodyG=new THREE.CylinderGeometry(R,R,wireLen,32,1,true);
+  const body=new THREE.Mesh(bodyG,new THREE.MeshStandardMaterial({color:0xcc8844,roughness:0.3,metalness:0.8,side:THREE.DoubleSide,transparent:true,opacity:0.85}));
+  body.rotation.z=Math.PI/2;wireGrp.add(body);
+  const frontCapG=new THREE.CylinderGeometry(R,R,0.03,32);
+  const frontCap=new THREE.Mesh(frontCapG,new THREE.MeshStandardMaterial({color:0xee9955,roughness:0.2,metalness:0.7,emissive:0x331100,emissiveIntensity:0.3}));
+  frontCap.rotation.z=Math.PI/2;frontCap.position.x=-wireLen/2;wireGrp.add(frontCap);
+  const backCap=new THREE.Mesh(frontCapG.clone(),new THREE.MeshStandardMaterial({color:0xee9955,roughness:0.2,metalness:0.7,emissive:0x331100,emissiveIntensity:0.3}));
+  backCap.rotation.z=Math.PI/2;backCap.position.x=wireLen/2;wireGrp.add(backCap);
+  const sectionRingG=new THREE.TorusGeometry(R,0.015,8,32);
+  const ring=new THREE.Mesh(sectionRingG,new THREE.MeshStandardMaterial({color:0xffdd44,roughness:0.1,metalness:0.2,emissive:0x443300,emissiveIntensity:0.6}));
+  ring.position.set(0,0,0);wireGrp.add(ring);
+  annotGrp.add(addText('S='+Sval.toFixed(2)+'mm²',0.7,0,0,0.45,0.12,'#d2991d'));
+  annotGrp.add(addText('e⁻ 漂移',-wireLen/2-0.3,0.4,0,0.35,0.12,'#44aaff'));
+  annotGrp.add(addText('电场方向 →',wireLen/2+0.3,0.2,0,0.4,0.12,'#ff6644'));
+}
+
+function spawnElectrons(){
+  disposeGroup(electronGrp);
+  const R=Math.max(0.08,Math.min(Math.sqrt(Sval/Math.PI)*0.001*1000,0.5));
+  const density=nVal/8.5;
+  const nParticles=Math.floor(120*density);
+  for(let i=0;i<nParticles;i++){
+    const a=Math.random()*Math.PI*2;
+    const rr=Math.sqrt(Math.random())*R*0.85;
+    const x=-wireLen/2+Math.random()*wireLen;
+    const y=Math.cos(a)*rr;
+    const z=Math.sin(a)*rr;
+    const ball=new THREE.Mesh(new THREE.SphereGeometry(0.025,6,6),new THREE.MeshBasicMaterial({color:0x44aaff,transparent:true,opacity:0.85}));
+    ball.position.set(x,y,z);
+    ball.userData={r:rr,a:a,startX:x,randomPhase:Math.random()*Math.PI*2};
+    electronGrp.add(ball);
+  }
+}
+
+function updateElectrons(){
+  const speed=vVal*0.5;
+  electronGrp.children.forEach(ball=>{
+    ball.position.x+=speed*0.016;
+    if(ball.position.x>wireLen/2)ball.position.x-=wireLen;
+  });
+  const EE=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,wireLen*0.15,6).translate(0,wireLen*0.075,0),new THREE.MeshStandardMaterial({color:0xff6644,roughness:0.1,metalness:0.1,emissive:0x440000,emissiveIntensity:0.5}));
+  const g=electronGrp.getObjectByName('efield');
+  if(g)electronGrp.remove(g);
+  EE.rotation.z=-Math.PI/2;EE.position.set(wireLen/2+0.35,0,0);EE.name='efield';electronGrp.add(EE);
+  const head=new THREE.Mesh(new THREE.ConeGeometry(0.08,0.2,8),new THREE.MeshStandardMaterial({color:0xff6644,roughness:0.1,metalness:0.1,emissive:0x440000,emissiveIntensity:0.5}));
+  head.rotation.z=-Math.PI/2;head.position.set(wireLen/2+0.7,0,0);head.name='efield_head';electronGrp.add(head);
+}
+
+function updatePanel(){
+  const n=nVal*1e28;const S=Sval*1e-6;const v=vVal*1e-3;const I=n*e*S*v;
+  document.getElementById('vN').textContent=nVal.toFixed(1)+'×10²⁸ m⁻³';
+  document.getElementById('vS').textContent=Sval.toFixed(2)+' mm²';
+  document.getElementById('vV').textContent=vVal.toFixed(2)+' mm/s';
+  document.getElementById('vI').textContent=I.toFixed(2)+' A';
+}
+
+document.getElementById('slN').addEventListener('input',function(){nVal=parseFloat(this.value);spawnElectrons();updatePanel();});
+document.getElementById('slS').addEventListener('input',function(){Sval=parseFloat(this.value);buildWire();spawnElectrons();updatePanel();});
+document.getElementById('slV').addEventListener('input',function(){vVal=parseFloat(this.value);updatePanel();});
+
+window.addEventListener('keydown',e=>{if(e.key.toLowerCase()==='r'){camera.position.set(2.5,2.5,6);camera.lookAt(0,0,0);controls.target.set(0,0,0);controls.update();}});
+window.addEventListener('resize',()=>{camera.aspect=window.innerWidth/window.innerHeight;camera.updateProjectionMatrix();renderer.setSize(window.innerWidth,window.innerHeight);});
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const dt=Math.min(clock.getDelta(),0.1);t+=dt;
+  updateElectrons();controls.update();renderer.render(scene,camera);
+}
+buildWire();spawnElectrons();updatePanel();requestAnimationFrame(animate);
+</script>
+</html>
