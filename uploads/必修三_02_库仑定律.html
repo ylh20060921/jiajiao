@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>库仑扭秤实验 - 3D交互模型</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --panel-bg: rgba(22, 27, 34, 0.94);
+    --text: #e6edf3;
+    --text-secondary: #8b949e;
+    --accent-red: #f85149;
+    --accent-blue: #58a6ff;
+    --accent-gold: #d2991d;
+    --border: rgba(48, 54, 61, 0.8);
+    --slider-track: #30363d;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+    overflow: hidden;
+    height: 100vh;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  #canvas-container {
+    position: fixed; inset: 0; z-index: 1;
+  }
+  canvas { display: block; }
+
+  /* 顶部信息栏 */
+  #top-bar {
+    position: fixed; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 10; display: flex; gap: 20px; align-items: center;
+    background: var(--panel-bg); border: 1px solid var(--border);
+    border-radius: 12px; padding: 10px 22px;
+    backdrop-filter: blur(16px);
+  }
+  #top-bar .angle-display {
+    font-size: 26px; font-weight: 700; color: var(--accent-gold);
+    font-variant-numeric: tabular-nums; font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  #top-bar .angle-label { color: var(--text-secondary); font-size: 14px; }
+  #top-bar .sep { width: 1px; height: 24px; background: var(--border); }
+
+  /* 底部控制面板 */
+  #control-panel {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+    z-index: 10; display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap;
+    justify-content: center;
+    background: var(--panel-bg); border: 1px solid var(--border);
+    border-radius: 16px; padding: 16px 24px;
+    backdrop-filter: blur(16px); max-width: 95vw;
+  }
+  .slider-group {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    min-width: 110px;
+  }
+  .slider-group label {
+    font-size: 13px; font-weight: 600; color: var(--text);
+    letter-spacing: 0.5px;
+  }
+  .slider-group .charge-val {
+    font-size: 12px; color: var(--text-secondary);
+    font-family: 'JetBrains Mono', 'Consolas', monospace;
+  }
+  .slider-group input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 6px;
+    border-radius: 3px; background: var(--slider-track); outline: none;
+    cursor: pointer;
+  }
+  .slider-group input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; cursor: pointer; border: 2px solid var(--text);
+  }
+  .slider-c input[type="range"]::-webkit-slider-thumb { background: #ff6b6b; }
+  .slider-d input[type="range"]::-webkit-slider-thumb { background: #ff6b6b; }
+  .slider-a input[type="range"]::-webkit-slider-thumb { background: #ffa726; }
+  .slider-b input[type="range"]::-webkit-slider-thumb { background: #ffa726; }
+
+  .btn-reset {
+    padding: 10px 20px; border: 1px solid var(--border);
+    background: rgba(48,54,61,0.6); color: var(--text);
+    border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-reset:hover { background: rgba(88,166,255,0.2); border-color: var(--accent-blue); }
+
+  /* 图例 */
+  #legend {
+    position: fixed; top: 120px; right: 20px; z-index: 10;
+    background: var(--panel-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px;
+    backdrop-filter: blur(16px); font-size: 12px;
+  }
+  #legend .item { display: flex; align-items: center; gap: 8px; margin: 4px 0; color: var(--text-secondary); }
+  #legend .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+  /* 提示 */
+  #hint {
+    position: fixed; bottom: 140px; left: 50%; transform: translateX(-50%);
+    z-index: 10; font-size: 12px; color: var(--text-secondary);
+    pointer-events: none; opacity: 0.7;
+  }
+
+  @media (max-width: 768px) {
+    #control-panel { gap: 10px; padding: 12px 14px; }
+    .slider-group { min-width: 80px; }
+    #top-bar { padding: 8px 14px; gap: 12px; }
+    #top-bar .angle-display { font-size: 20px; }
+    #legend { top: 100px; right: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="canvas-container"></div>
+
+<div id="top-bar">
+  <span class="angle-label">扭转角度</span>
+  <span class="angle-display" id="angle-val">0.00°</span>
+  <span class="sep"></span>
+  <span class="angle-label">库仑力矩</span>
+  <span class="angle-display" id="torque-val" style="color:#f85149;">0.000</span>
+</div>
+
+<div id="control-panel">
+  <div class="slider-group slider-c">
+    <label style="color:#ff6b6b;">固定球 C 电荷</label>
+    <input type="range" id="chargeC" min="-10" max="10" value="-5" step="0.1">
+    <span class="charge-val" id="valC">-5.0</span>
+  </div>
+  <div class="slider-group slider-d">
+    <label style="color:#ff6b6b;">固定球 D 电荷</label>
+    <input type="range" id="chargeD" min="-10" max="10" value="-5" step="0.1">
+    <span class="charge-val" id="valD">-5.0</span>
+  </div>
+  <div class="slider-group slider-a">
+    <label style="color:#ffa726;">小球 A 电荷</label>
+    <input type="range" id="chargeA" min="-10" max="10" value="3" step="0.1">
+    <span class="charge-val" id="valA">3.0</span>
+  </div>
+  <div class="slider-group slider-b">
+    <label style="color:#ffa726;">小球 B 电荷</label>
+    <input type="range" id="chargeB" min="-10" max="10" value="3" step="0.1">
+    <span class="charge-val" id="valB">3.0</span>
+  </div>
+  <button class="btn-reset" id="btnReset">重置</button>
+</div>
+
+<div id="legend">
+  <div class="item"><span class="dot" style="background:#f85149;"></span> 库仑力 (A-C)</div>
+  <div class="item"><span class="dot" style="background:#58a6ff;"></span> 库仑力 (B-D)</div>
+  <div class="item"><span class="dot" style="background:#ffa726;"></span> 小球 A / B</div>
+  <div class="item"><span class="dot" style="background:#ff6b6b;"></span> 固定球 C / D</div>
+  <div class="item"><span class="dot" style="background:#c0c0c0;"></span> 扭丝 (银)</div>
+</div>
+
+<div id="hint">鼠标拖拽旋转视角 | 滚轮缩放 | 右键平移 | 下方滑块调节电荷</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+// ==================== DOM 引用 ====================
+const angleValEl = document.getElementById('angle-val');
+const torqueValEl = document.getElementById('torque-val');
+const sliderC = document.getElementById('chargeC');
+const sliderD = document.getElementById('chargeD');
+const sliderA = document.getElementById('chargeA');
+const sliderB = document.getElementById('chargeB');
+const valC = document.getElementById('valC');
+const valD = document.getElementById('valD');
+const valA = document.getElementById('valA');
+const valB = document.getElementById('valB');
+const btnReset = document.getElementById('btnReset');
+
+// ==================== 场景初始化 ====================
+const container = document.getElementById('canvas-container');
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+container.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0d1117);
+scene.fog = new THREE.Fog(0x0d1117, 8, 30);
+
+const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.5, 50);
+camera.position.set(6, 4.5, 9);
+camera.lookAt(0, 1.8, 0);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(0, 1.8, 0);
+controls.enableDamping = true;
+controls.dampingFactor = 0.08;
+controls.minDistance = 3;
+controls.maxDistance = 18;
+controls.maxPolarAngle = Math.PI * 0.75;
+controls.update();
+
+// ==================== 光照 ====================
+const ambientLight = new THREE.AmbientLight(0x404060, 1.8);
+scene.add(ambientLight);
+
+const keyLight = new THREE.DirectionalLight(0xffffff, 4.5);
+keyLight.position.set(8, 10, 5);
+keyLight.castShadow = true;
+keyLight.shadow.mapSize.width = 2048;
+keyLight.shadow.mapSize.height = 2048;
+keyLight.shadow.camera.near = 0.5;
+keyLight.shadow.camera.far = 40;
+keyLight.shadow.camera.left = -10;
+keyLight.shadow.camera.right = 10;
+keyLight.shadow.camera.top = 10;
+keyLight.shadow.camera.bottom = -10;
+keyLight.shadow.bias = -0.0001;
+keyLight.shadow.normalBias = 0.02;
+scene.add(keyLight);
+
+const fillLight = new THREE.DirectionalLight(0x8899cc, 1.8);
+fillLight.position.set(-3, 3, -2);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0xffffff, 2.0);
+rimLight.position.set(0, 2, -5);
+scene.add(rimLight);
+
+const pointLight1 = new THREE.PointLight(0xffffff, 3, 8);
+pointLight1.position.set(0, 4, 2);
+scene.add(pointLight1);
+
+// ==================== 材质工厂 ====================
+const matSilver = new THREE.MeshStandardMaterial({
+  color: 0xc8c8d0, metalness: 0.95, roughness: 0.28
+});
+const matGold = new THREE.MeshStandardMaterial({
+  color: 0xe8b84b, metalness: 0.92, roughness: 0.22
+});
+const matCopper = new THREE.MeshStandardMaterial({
+  color: 0xe8734a, metalness: 0.9, roughness: 0.26
+});
+const matInsulator = new THREE.MeshStandardMaterial({
+  color: 0x6b4226, metalness: 0.05, roughness: 0.7
+});
+const matDarkMetal = new THREE.MeshStandardMaterial({
+  color: 0x3a3a42, metalness: 0.85, roughness: 0.4
+});
+const matWood = new THREE.MeshStandardMaterial({
+  color: 0x3e2723, metalness: 0.0, roughness: 0.85
+});
+const matWoodTop = new THREE.MeshStandardMaterial({
+  color: 0x4e342e, metalness: 0.0, roughness: 0.75
+});
+
+// ==================== 场景构建 ====================
+
+// -- 地面 --
+const groundGeom = new THREE.PlaneGeometry(20, 20);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x1a1a24, roughness: 0.9, metalness: 0.1 });
+const ground = new THREE.Mesh(groundGeom, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -2.5;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 网格参考线
+const gridHelper = new THREE.PolarGridHelper(5, 32, 24, 128, 0x222233, 0x222233);
+gridHelper.position.y = -2.49;
+scene.add(gridHelper);
+
+// -- 底座 --
+const baseGroup = new THREE.Group();
+scene.add(baseGroup);
+
+const basePillar = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.4, 1.6, 0.55, 48),
+  matWood
+);
+basePillar.position.y = 0.275;
+basePillar.castShadow = true;
+basePillar.receiveShadow = true;
+baseGroup.add(basePillar);
+
+const baseTopDisc = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.45, 1.45, 0.06, 64),
+  matWoodTop
+);
+baseTopDisc.position.y = 0.58;
+baseTopDisc.receiveShadow = true;
+baseGroup.add(baseTopDisc);
+
+// 角度刻度盘
+const dialGroup = new THREE.Group();
+dialGroup.position.y = 0.62;
+baseGroup.add(dialGroup);
+
+const tickGeomLong = new THREE.BoxGeometry(0.02, 0.003, 0.25);
+const tickGeomShort = new THREE.BoxGeometry(0.015, 0.003, 0.15);
+const tickMatMajor = new THREE.MeshStandardMaterial({ color: 0xd4c5a9, roughness: 0.5, metalness: 0.3, emissive: 0x111111 });
+const tickMatMinor = new THREE.MeshStandardMaterial({ color: 0x8a7e6b, roughness: 0.6, metalness: 0.2, emissive: 0x050505 });
+
+for (let i = 0; i < 360; i += 5) {
+  const isMajor = (i % 30 === 0);
+  const isMedium = (i % 10 === 0) && !isMajor;
+  const geom = isMajor ? tickGeomLong : tickGeomShort;
+  const mat = isMajor ? tickMatMajor : tickMatMinor;
+  const tick = new THREE.Mesh(geom, mat);
+  const rad = THREE.MathUtils.degToRad(i);
+  const r = 1.3;
+  tick.position.set(Math.sin(rad) * r, 0, Math.cos(rad) * r);
+  tick.rotation.y = -rad;
+  tick.scale.set(isMajor ? 1 : (isMedium ? 0.8 : 0.5), 1, 1);
+  dialGroup.add(tick);
+}
+
+// 刻度数字 (每30度)
+function createNumberSprite(num) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 64; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#d4c5a9';
+  ctx.font = 'bold 28px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(num), 32, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  const spriteMat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const sprite = new THREE.Sprite(spriteMat);
+  sprite.scale.set(0.45, 0.45, 1);
+  return sprite;
+}
+for (let i = 0; i < 360; i += 30) {
+  const rad = THREE.MathUtils.degToRad(i);
+  const r = 1.05;
+  const sprite = createNumberSprite(i);
+  sprite.position.set(Math.sin(rad) * r, 0.03, Math.cos(rad) * r);
+  dialGroup.add(sprite);
+}
+
+// 指针 (零位标记)
+const pointerGeom = new THREE.BoxGeometry(0.03, 0.005, 1.1);
+const pointerMat = new THREE.MeshStandardMaterial({ color: 0xff4444, roughness: 0.3, emissive: 0x330000 });
+const pointer = new THREE.Mesh(pointerGeom, pointerMat);
+pointer.position.set(0, 0.64, 0.55);
+baseGroup.add(pointer);
+
+// -- 顶部支架 --
+const topMountY = 4.2;
+const topMountGroup = new THREE.Group();
+topMountGroup.position.y = topMountY;
+scene.add(topMountGroup);
+
+const topBracket = new THREE.Mesh(
+  new THREE.BoxGeometry(0.6, 0.25, 0.6),
+  matDarkMetal
+);
+topBracket.castShadow = true;
+topMountGroup.add(topBracket);
+
+const topKnob = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.18, 0.22, 0.3, 32),
+  matDarkMetal
+);
+topKnob.position.y = 0.27;
+topKnob.castShadow = true;
+topMountGroup.add(topKnob);
+
+// 支架柱
+const supportPillar = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.08, 0.08, topMountY - 0.58, 16),
+  matDarkMetal
+);
+supportPillar.position.y = (topMountY + 0.58) / 2;
+supportPillar.castShadow = true;
+scene.add(supportPillar);
+
+// -- 扭丝 (分段扭转) --
+const wireTopY = topMountY - 0.12;
+const wireLength = 3.2;
+const wireBottomY = wireTopY - wireLength;
+const numWireSegments = 40;
+const wireSegments = [];
+const wireSegmentHeight = wireLength / numWireSegments;
+const wireRadius = 0.015;
+
+for (let i = 0; i < numWireSegments; i++) {
+  const segGeom = new THREE.CylinderGeometry(wireRadius, wireRadius, wireSegmentHeight, 10);
+  const seg = new THREE.Mesh(segGeom, matSilver);
+  const y = wireTopY - (i + 0.5) * wireSegmentHeight;
+  seg.position.set(0, y, 0);
+  seg.castShadow = true;
+  scene.add(seg);
+  wireSegments.push(seg);
+}
+
+// -- 横杆 + 小球 (旋转组) --
+const rodGroup = new THREE.Group();
+rodGroup.position.y = wireBottomY;
+scene.add(rodGroup);
+
+const rodHalfLength = 1.5;
+const rodGeom = new THREE.CylinderGeometry(0.05, 0.05, rodHalfLength * 2, 16);
+const rod = new THREE.Mesh(rodGeom, matInsulator);
+rod.rotation.z = Math.PI / 2;
+rod.castShadow = true;
+rod.receiveShadow = true;
+rodGroup.add(rod);
+
+// 小球 A
+const ballRadiusA = 0.18;
+const ballA = new THREE.Mesh(
+  new THREE.SphereGeometry(ballRadiusA, 48, 48),
+  matGold
+);
+ballA.position.set(-rodHalfLength, 0, 0);
+ballA.castShadow = true;
+ballA.receiveShadow = true;
+rodGroup.add(ballA);
+
+// 小球 B
+const ballB = new THREE.Mesh(
+  new THREE.SphereGeometry(ballRadiusA, 48, 48),
+  matGold
+);
+ballB.position.set(rodHalfLength, 0, 0);
+ballB.castShadow = true;
+ballB.receiveShadow = true;
+rodGroup.add(ballB);
+
+// -- 标签精灵 --
+function createTextSprite(text, color) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 128; canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.font = 'bold 36px "Segoe UI","PingFang SC",sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 64, 32);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.minFilter = THREE.LinearFilter;
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true, depthWrite: false });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.5, 0.25, 1);
+  return sprite;
+}
+
+const labelA = createTextSprite('A', '#ffcc80');
+labelA.position.set(-rodHalfLength, ballRadiusA + 0.32, 0);
+rodGroup.add(labelA);
+
+const labelB = createTextSprite('B', '#ffcc80');
+labelB.position.set(rodHalfLength, ballRadiusA + 0.32, 0);
+rodGroup.add(labelB);
+
+// -- 固定大球 C --
+const ballRadiusC = 0.3;
+const fixedCX = -rodHalfLength - 0.85;
+const fixedCZ = -0.55;
+const ballC = new THREE.Mesh(
+  new THREE.SphereGeometry(ballRadiusC, 64, 64),
+  matCopper
+);
+ballC.position.set(fixedCX, wireBottomY, fixedCZ);
+ballC.castShadow = true;
+ballC.receiveShadow = true;
+scene.add(ballC);
+
+const labelC = createTextSprite('C', '#ff8a80');
+labelC.position.set(fixedCX, wireBottomY + ballRadiusC + 0.4, fixedCZ);
+scene.add(labelC);
+
+// -- 固定大球 D --
+const fixedDX = rodHalfLength + 0.85;
+const fixedDZ = 0.55;
+const ballD = new THREE.Mesh(
+  new THREE.SphereGeometry(ballRadiusC, 64, 64),
+  matCopper
+);
+ballD.position.set(fixedDX, wireBottomY, fixedDZ);
+ballD.castShadow = true;
+ballD.receiveShadow = true;
+scene.add(ballD);
+
+const labelD = createTextSprite('D', '#ff8a80');
+labelD.position.set(fixedDX, wireBottomY + ballRadiusC + 0.4, fixedDZ);
+scene.add(labelD);
+
+// -- 支撑柱 C --
+const pillarC = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.06, 0.06, wireBottomY - 0.6, 12),
+  matDarkMetal
+);
+pillarC.position.set(fixedCX, (wireBottomY + 0.6) / 2, fixedCZ);
+pillarC.castShadow = true;
+scene.add(pillarC);
+
+// -- 支撑柱 D --
+const pillarD = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.06, 0.06, wireBottomY - 0.6, 12),
+  matDarkMetal
+);
+pillarD.position.set(fixedDX, (wireBottomY + 0.6) / 2, fixedDZ);
+pillarD.castShadow = true;
+scene.add(pillarD);
+
+// 小基座 C
+const baseC = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.2, 0.25, 0.08, 24),
+  matWood
+);
+baseC.position.set(fixedCX, 0.62, fixedCZ);
+baseC.receiveShadow = true;
+scene.add(baseC);
+
+// 小基座 D
+const baseD = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.2, 0.25, 0.08, 24),
+  matWood
+);
+baseD.position.set(fixedDX, 0.62, fixedDZ);
+baseD.receiveShadow = true;
+scene.add(baseD);
+
+// -- 力箭头 --
+const arrowGroupAC = new THREE.Group();
+scene.add(arrowGroupAC);
+const arrowGroupBD = new THREE.Group();
+scene.add(arrowGroupBD);
+
+function updateArrowMesh(group, from, to, color) {
+  while (group.children.length > 0) group.remove(group.children[0]);
+
+  const dir = new THREE.Vector3().subVectors(to, from);
+  const len = dir.length();
+  if (len < 0.005) return;
+
+  dir.normalize();
+  const shaftLen = len * 0.72;
+  const headLen = len * 0.28;
+
+  const shaftGeom = new THREE.CylinderGeometry(0.035, 0.035, shaftLen, 8);
+  const shaftMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, depthTest: true });
+  const shaft = new THREE.Mesh(shaftGeom, shaftMat);
+  shaft.position.y = shaftLen / 2;
+  group.add(shaft);
+
+  const headGeom = new THREE.ConeGeometry(0.09, headLen, 8);
+  const headMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92, depthTest: true });
+  const head = new THREE.Mesh(headGeom, headMat);
+  head.position.y = shaftLen + headLen / 2;
+  group.add(head);
+
+  group.position.copy(from);
+  const quat = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  group.setRotationFromQuaternion(quat);
+}
+
+// ==================== 物理模拟 ====================
+const simulationK = 0.08;
+const torsionK = 1.8;
+const rodHalfLen = rodHalfLength;
+const ballMass = 0.05;
+const rodMass = 0.08;
+const momentInertia = rodMass * (2 * rodHalfLen) ** 2 / 12 + 2 * ballMass * rodHalfLen ** 2;
+const damping = 0.35;
+const maxDt = 1 / 30;
+
+let currentAngle = 0.0;
+let angularVelocity = 0.0;
+let chargeAVal = parseFloat(sliderA.value);
+let chargeBVal = parseFloat(sliderB.value);
+let chargeCVal = parseFloat(sliderC.value);
+let chargeDVal = parseFloat(sliderD.value);
+
+function computeCoulombForces(angle) {
+  const cosA = Math.cos(angle);
+  const sinA = Math.sin(angle);
+
+  const aPos = new THREE.Vector3(-rodHalfLen * cosA, 0, rodHalfLen * sinA);
+  const bPos = new THREE.Vector3(rodHalfLen * cosA, 0, -rodHalfLen * sinA);
+  const cPos = new THREE.Vector3(fixedCX, 0, fixedCZ);
+  const dPos = new THREE.Vector3(fixedDX, 0, fixedDZ);
+
+  // A-C
+  const dAC = new THREE.Vector3().subVectors(aPos, cPos);
+  const rAC = dAC.length();
+  const fAC = simulationK * chargeAVal * chargeCVal / Math.max(rAC * rAC, 0.01);
+  const fACVec = dAC.clone().normalize().multiplyScalar(fAC);
+  const torqueAC = new THREE.Vector3().crossVectors(aPos, new THREE.Vector3(fACVec.x, 0, fACVec.z)).y;
+
+  // B-D
+  const dBD = new THREE.Vector3().subVectors(bPos, dPos);
+  const rBD = dBD.length();
+  const fBD = simulationK * chargeBVal * chargeDVal / Math.max(rBD * rBD, 0.01);
+  const fBDVec = dBD.clone().normalize().multiplyScalar(fBD);
+  const torqueBD = new THREE.Vector3().crossVectors(bPos, new THREE.Vector3(fBDVec.x, 0, fBDVec.z)).y;
+
+  const coulombTorque = torqueAC + torqueBD;
+
+  return {
+    torque: coulombTorque,
+    fAC, rAC, fBD, rBD,
+    fACVec3: new THREE.Vector3(fACVec.x, 0, fACVec.z),
+    fBDVec3: new THREE.Vector3(fBDVec.x, 0, fBDVec.z),
+    aPos, bPos, cPos, dPos
+  };
+}
+
+// ==================== 动画循环 ====================
+const clock = new THREE.Clock();
+let lastPhysicsUpdate = 0;
+const physicsInterval = 0.016;
+
+function animate(timestamp) {
+  requestAnimationFrame(animate);
+
+  const rawDt = clock.getDelta();
+  const clampedDt = Math.min(rawDt, maxDt);
+
+  controls.update();
+
+  // 物理更新
+  lastPhysicsUpdate += rawDt;
+  while (lastPhysicsUpdate >= physicsInterval) {
+    lastPhysicsUpdate -= physicsInterval;
+    const dt = physicsInterval;
+
+    const forces = computeCoulombForces(currentAngle);
+    const restoringTorque = -torsionK * currentAngle;
+    const netTorque = forces.torque + restoringTorque - damping * angularVelocity;
+    const alpha = netTorque / momentInertia;
+    angularVelocity += alpha * dt;
+    currentAngle += angularVelocity * dt;
+
+    // 更新力箭头
+    const aWorldPos = forces.aPos.clone();
+    aWorldPos.y = wireBottomY;
+    const cWorldPos = forces.cPos.clone();
+    cWorldPos.y = wireBottomY;
+    const bWorldPos = forces.bPos.clone();
+    bWorldPos.y = wireBottomY;
+    const dWorldPos = forces.dPos.clone();
+    dWorldPos.y = wireBottomY;
+
+    const arrowScale = 0.6;
+    const acDir = forces.fACVec3.clone().normalize();
+    const acLen = Math.abs(forces.fAC) * arrowScale;
+    const acTo = aWorldPos.clone().addScaledVector(acDir, acLen);
+
+    const bdDir = forces.fBDVec3.clone().normalize();
+    const bdLen = Math.abs(forces.fBD) * arrowScale;
+    const bdTo = bWorldPos.clone().addScaledVector(bdDir, bdLen);
+
+    updateArrowMesh(arrowGroupAC, aWorldPos, acTo, 0xf85149);
+    updateArrowMesh(arrowGroupBD, bWorldPos, bdTo, 0x58a6ff);
+
+    // 更新扭丝扭转
+    for (let i = 0; i < numWireSegments; i++) {
+      const t = (i + 1) / numWireSegments;
+      wireSegments[i].rotation.y = t * currentAngle;
+    }
+
+    // 旋转横杆组
+    rodGroup.rotation.y = currentAngle;
+
+    // 更新标签位置
+    labelC.position.set(fixedCX, wireBottomY + ballRadiusC + 0.4, fixedCZ);
+    labelD.position.set(fixedDX, wireBottomY + ballRadiusC + 0.4, fixedDZ);
+  }
+
+  // UI 更新
+  const angleDeg = THREE.MathUtils.radToDeg(currentAngle);
+  const forces = computeCoulombForces(currentAngle);
+  angleValEl.textContent = angleDeg.toFixed(2) + '°';
+  const coulombTorqueDisp = forces.torque;
+  torqueValEl.textContent = coulombTorqueDisp.toFixed(3);
+  if (Math.abs(coulombTorqueDisp) < 0.0005) {
+    torqueValEl.style.color = '#8b949e';
+  } else if (coulombTorqueDisp > 0) {
+    torqueValEl.style.color = '#f85149';
+  } else {
+    torqueValEl.style.color = '#58a6ff';
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ==================== UI 事件 ====================
+function onChargeChange() {
+  chargeAVal = parseFloat(sliderA.value);
+  chargeBVal = parseFloat(sliderB.value);
+  chargeCVal = parseFloat(sliderC.value);
+  chargeDVal = parseFloat(sliderD.value);
+  valA.textContent = chargeAVal.toFixed(1);
+  valB.textContent = chargeBVal.toFixed(1);
+  valC.textContent = chargeCVal.toFixed(1);
+  valD.textContent = chargeDVal.toFixed(1);
+
+  // 根据电荷符号改变球的颜色
+  const posColor = new THREE.Color(0xff6b4a);
+  const negColor = new THREE.Color(0x4a9fff);
+  const neutralColor = new THREE.Color(0x888888);
+
+  ballA.material = matGold.clone();
+  ballB.material = matGold.clone();
+  ballC.material = matCopper.clone();
+  ballD.material = matCopper.clone();
+
+  if (chargeAVal > 0.1) ballA.material.emissive = new THREE.Color(0x331100);
+  else if (chargeAVal < -0.1) ballA.material.emissive = new THREE.Color(0x001133);
+  else ballA.material.emissive = new THREE.Color(0x000000);
+
+  if (chargeBVal > 0.1) ballB.material.emissive = new THREE.Color(0x331100);
+  else if (chargeBVal < -0.1) ballB.material.emissive = new THREE.Color(0x001133);
+  else ballB.material.emissive = new THREE.Color(0x000000);
+
+  if (chargeCVal > 0.1) ballC.material.emissive = new THREE.Color(0x441100);
+  else if (chargeCVal < -0.1) ballC.material.emissive = new THREE.Color(0x001144);
+  else ballC.material.emissive = new THREE.Color(0x000000);
+
+  if (chargeDVal > 0.1) ballD.material.emissive = new THREE.Color(0x441100);
+  else if (chargeDVal < -0.1) ballD.material.emissive = new THREE.Color(0x001144);
+  else ballD.material.emissive = new THREE.Color(0x000000);
+}
+
+function resetAll() {
+  sliderA.value = 3;
+  sliderB.value = 3;
+  sliderC.value = -5;
+  sliderD.value = -5;
+  currentAngle = 0;
+  angularVelocity = 0;
+  rodGroup.rotation.y = 0;
+  for (let i = 0; i < numWireSegments; i++) {
+    wireSegments[i].rotation.y = 0;
+  }
+  updateArrowMesh(arrowGroupAC, new THREE.Vector3(), new THREE.Vector3(), 0x000000);
+  updateArrowMesh(arrowGroupBD, new THREE.Vector3(), new THREE.Vector3(), 0x000000);
+  onChargeChange();
+}
+
+sliderA.addEventListener('input', onChargeChange);
+sliderB.addEventListener('input', onChargeChange);
+sliderC.addEventListener('input', onChargeChange);
+sliderD.addEventListener('input', onChargeChange);
+btnReset.addEventListener('click', resetAll);
+
+// ==================== 响应式 ====================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ==================== 键盘快捷键 ====================
+window.addEventListener('keydown', (e) => {
+  switch (e.key.toLowerCase()) {
+    case 'r': resetAll(); break;
+    case 'f': camera.position.set(0, wireBottomY, 6); camera.lookAt(0, wireBottomY, 0); controls.target.set(0, wireBottomY, 0); controls.update(); break;
+    case 't': camera.position.set(0, 6, 0.5); camera.lookAt(0, wireBottomY, 0); controls.target.set(0, wireBottomY, 0); controls.update(); break;
+  }
+});
+
+// ==================== 启动 ====================
+onChargeChange();
+requestAnimationFrame(animate);
+</script>
+</body>
+</html>
